@@ -1,3 +1,5 @@
 // To declare projects as part of a multi-project build use the 'include' method
 include 'step01-copy-with-new-method'
 include 'step02-asmifier-gen-code'
+include 'step03-wrapping-advancer'
+
