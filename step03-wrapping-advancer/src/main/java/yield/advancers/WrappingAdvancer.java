@@ -15,7 +15,7 @@ public class WrappingAdvancer<T> implements Advancer<T> {
     }
 
     @Override
-    public boolean tryAdvance(Yield<T> yield) {
+    public final boolean tryAdvance(Yield<T> yield) {
         box.reset();
         while(box.isFalse() && source.tryAdvance(item ->{
             yield.ret(item);
