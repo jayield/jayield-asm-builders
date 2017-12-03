@@ -3,4 +3,5 @@ include 'step01-copy-with-new-method'
 include 'step02-asmifier-gen-code'
 include 'step03-wrapping-advancer'
 include 'step04-visitor'
+include 'step05-lambda-bytecodes'
 
