@@ -1,9 +1,11 @@
 package jayield.lite;
 
 import jdk.internal.org.objectweb.asm.util.ASMifier;
+import loaders.ByteArrayClassLoader;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import visitors.CustomClassVisitor;
+import visitors.YieldWrapper;
 
 import java.io.FileOutputStream;
 import java.io.Serializable;
@@ -17,7 +19,8 @@ public class Series<T> {
     private final Advancer<T> advancer;
 
     private static final Series EMPTY = new Series(
-            yield -> {},
+            yield -> {
+            },
             yield -> false
     );
 
@@ -47,22 +50,23 @@ public class Series<T> {
     public <R> Series<R> traverseWith(Function<Series<T>, Traversable<R>> then) {
         Traversable<R> b = then.apply(this);
 
-        inspect(b);
+        Yield<Yield<R>> result = inspect(b);
 
         Advancer<R> ta = yield -> {
-            throw new UnsupportedOperationException();
+            result.ret(yield);
+            return true;
         };
         return new Series<>(b, ta);
     }
 
-    private <R> void inspect(Traversable<R> b) {
+    private <R> Yield<Yield<R>> inspect(Traversable<R> b) {
         try {
             SerializedLambda lambda = getSerializedLambda(b);
             String outPath = Series.class.getProtectionDomain().getCodeSource().getLocation().getPath(); // get path
             ClassReader cr = new ClassReader(lambda.getImplClass()); // "App"
             ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
             CustomClassVisitor ccv = new CustomClassVisitor(cw, lambda.getImplMethodName()); // lambda generated name
-            cr.accept(ccv,0);
+            cr.accept(ccv, 0);
             FileOutputStream fos = new FileOutputStream(outPath + "./" + lambda.getImplMethodName() + ".class");
             byte[] targetBytes = cw.toByteArray();
             fos.write(targetBytes);
@@ -70,8 +74,15 @@ public class Series<T> {
 //            ASMifier.main(new String[]{outPath + lambda.getImplClass() + ".class"});
             ASMifier.main(new String[]{outPath + lambda.getImplMethodName() + ".class"});
             System.out.println(lambda.getImplMethodName());
+            YieldWrapper<R> instance = (YieldWrapper<R>) ByteArrayClassLoader
+                    .load(lambda.getImplMethodName(), targetBytes)
+                    .newInstance();
+//            System.out.println(lambda.getFunctionalInterfaceMethodSignature());
+            return y -> instance.tryAdvanceWrapper((Series<R>) lambda.getCapturedArg(0), y);
+
         } catch (Exception e) {
             e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 

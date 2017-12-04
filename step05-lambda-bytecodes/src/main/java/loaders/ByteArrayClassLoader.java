@@ -1,9 +1,11 @@
+package loaders;
+
 /**
  * @author Miguel Gamboa
  *         created on 17-11-2017
  */
-class ByteArrayClassLoader extends ClassLoader {
-    static Class<?> load(String name, byte[] ba) {
+public class ByteArrayClassLoader extends ClassLoader {
+    public static Class<?> load(String name, byte[] ba) {
         return new ByteArrayClassLoader().getClassFromByteArray(name, ba);
     }
     /**
