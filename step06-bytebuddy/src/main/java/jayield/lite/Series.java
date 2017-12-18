@@ -2,18 +2,25 @@ package jayield.lite;
 
 import jdk.internal.org.objectweb.asm.util.ASMifier;
 import loaders.ByteArrayClassLoader;
+import net.bytebuddy.agent.ByteBuddyAgent;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.dynamic.ClassFileLocator;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import visitors.CustomClassVisitor;
 import visitors.YieldWrapper;
 
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.Serializable;
+import java.lang.instrument.Instrumentation;
 import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Method;
 import java.util.function.Function;
 
 public class Series<T> {
+
+    private static final Instrumentation instrumentation = ByteBuddyAgent.install();
 
     private final Traversable<T> bulk;
     private final Advancer<T> advancer;
@@ -57,43 +64,23 @@ public class Series<T> {
 
     private <R> Advancer<R> inspect(Traversable<R> b) {
         try {
-            SerializedLambda lambda = getSerializedLambda(b);
             String outPath = Series.class.getProtectionDomain().getCodeSource().getLocation().getPath(); // get path
-            ClassReader cr = new ClassReader(lambda.getImplClass()); // "App"
-            ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-            CustomClassVisitor ccv = new CustomClassVisitor(cw, lambda.getImplMethodName()); // lambda generated name
-            cr.accept(ccv, 0);
-            FileOutputStream fos = new FileOutputStream(outPath + "./" + lambda.getImplMethodName() + ".class");
-            byte[] targetBytes = cw.toByteArray();
-            fos.write(targetBytes);
+            byte[] bytes = getByteCodeOf(b.getClass());
+            FileOutputStream fos = new FileOutputStream(outPath + "./" + "test" + ".class");
+            fos.write(bytes);
             fos.close();
-//            ASMifier.main(new String[]{outPath + lambda.getImplClass() + ".class"});
-            ASMifier.main(new String[]{outPath + lambda.getImplMethodName() + ".class"});
-            System.out.println(lambda.getImplMethodName());
-            YieldWrapper<R> instance = (YieldWrapper<R>) ByteArrayClassLoader
-                    .load(lambda.getImplMethodName(), targetBytes)
-                    .newInstance();
-//            System.out.println(lambda.getFunctionalInterfaceMethodSignature());
-            return y -> instance.tryAdvanceWrapper((Series<R>) lambda.getCapturedArg(0), y);
-
+            ASMifier.main(new String[]{outPath + "test" + ".class"});
         } catch (Exception e) {
             e.printStackTrace();
-            throw new RuntimeException(e);
         }
+        return null;
     }
 
-    Object[] getCapturedArguments(SerializedLambda lambda){
-        Object[] args = new Object[lambda.getCapturedArgCount() + 1];
-        for(int i = 0; i < args.length - 1; i++) {
-            args[i] = lambda.getCapturedArg(i);
-        }
-        return args;
-    }
-
-    SerializedLambda getSerializedLambda(Serializable lambda) throws Exception {
-        final Method method = lambda.getClass().getDeclaredMethod("writeReplace");
-        method.setAccessible(true);
-        return (SerializedLambda) method.invoke(lambda);
+    byte[] getByteCodeOf(Class<?> c) throws IOException {
+        ClassFileLocator locator = ClassFileLocator.AgentBased.of(instrumentation, c);
+        TypeDescription.ForLoadedType desc = new TypeDescription.ForLoadedType(c);
+        ClassFileLocator.Resolution resolution = locator.locate(desc.getName());
+        return resolution.resolve();
     }
 
 }

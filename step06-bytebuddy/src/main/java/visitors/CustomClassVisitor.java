@@ -35,6 +35,7 @@ public class CustomClassVisitor extends ClassVisitor implements Opcodes {
     public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
         if(!name.equals(targetName))
             return super.visitMethod(access, name, desc, signature, exceptions);
+        System.out.println("found it");
         return new CustomMethodVisitor(super.visitMethod(ACC_PUBLIC + ACC_INTERFACE + ACC_FINAL, "tryAdvanceWrapper", desc, signature, exceptions));
     }
 

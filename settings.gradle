@@ -4,4 +4,5 @@ include 'step02-asmifier-gen-code'
 include 'step03-wrapping-advancer'
 include 'step04-visitor'
 include 'step05-lambda-bytecodes'
+include 'step06-bytebuddy'
 
