@@ -1,15 +1,15 @@
 package jayield.lite;
 
-import jdk.internal.org.objectweb.asm.util.ASMifier;
+import jayield.lite.boxes.BoolBox;
 import loaders.ByteArrayClassLoader;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import visitors.CustomClassVisitor;
-import visitors.YieldWrapper;
 
 import java.io.FileOutputStream;
 import java.io.Serializable;
 import java.lang.invoke.SerializedLambda;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.function.Function;
 
@@ -67,15 +67,32 @@ public class Series<T> {
             byte[] targetBytes = cw.toByteArray();
             fos.write(targetBytes);
             fos.close();
-//            ASMifier.main(new String[]{outPath + lambda.getImplClass() + ".class"});
-            ASMifier.main(new String[]{outPath + lambda.getImplMethodName() + ".class"});
-            System.out.println(lambda.getImplMethodName());
-            YieldWrapper<R> instance = (YieldWrapper<R>) ByteArrayClassLoader
-                    .load(lambda.getImplMethodName(), targetBytes)
-                    .newInstance();
-//            System.out.println(lambda.getFunctionalInterfaceMethodSignature());
-            return y -> instance.tryAdvanceWrapper((Series<R>) lambda.getCapturedArg(0), y);
-
+            Object[] arguments = getCapturedArguments(lambda);
+            Class<?>[] capturedArgumentClasses = new Class<?>[arguments.length];
+            Class<?> newClass = ByteArrayClassLoader
+                    .load(lambda.getImplMethodName(), targetBytes);
+            Method[] methods = newClass.getDeclaredMethods();
+            Method[] method = new Method[1];
+            for(Method m : methods){
+                if(m.getName().equals(lambda.getImplMethodName())){
+                    method[0] = m;
+                }
+            }
+            final BoolBox box = new BoolBox();
+            return y -> {
+                box.reset();
+                Yield<R> wrap = wr -> {
+                    y.ret(wr);
+                    box.set();
+                };
+                arguments[arguments.length - 1] = wrap;
+                try {
+                    while(box.isFalse() && (Boolean) method[0].invoke(arguments));
+                    return box.isTrue();
+                } catch (IllegalAccessException | InvocationTargetException e) {
+                    throw new RuntimeException(e);
+                }
+            };
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException(e);

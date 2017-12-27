@@ -5,12 +5,13 @@ public class App implements Opcodes {
 
     public static void main(String[] args) throws Exception {
         int thirtyTwo = 32;
+        Integer thirtyOne = 31;
         String its = "its ";
-//        Series.empty().traverseWith(source -> yield -> source.traverse(item -> yield.ret(item)));
+        Series.empty().traverseWith(source -> yield -> source.traverse(item -> yield.ret(item)));
         Series.empty().traverseWith(source -> {
             int x = thirtyTwo - 1;
             return yield -> {
-                System.out.println(thirtyTwo);
+                System.out.println(thirtyTwo + thirtyOne);
                 int[] negative = new int[]{0, -1};
                 source.traverse(item -> {
                     System.out.println(its + "hello" + negative[1]);
