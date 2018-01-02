@@ -1,5 +1,6 @@
 package visitors;
 
+import jayield.lite.Advancer;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
@@ -17,7 +18,7 @@ public class CustomClassVisitor extends ClassVisitor implements Opcodes {
         super(ASM6, cv);
         this.cv = cv;
         this.targetName = targetName;
-        interfaces = new String[] {YieldWrapper.class.getCanonicalName().replace('.', '/')};
+        interfaces = new String[] {Advancer.class.getCanonicalName().replace('.', '/')};
 
     }
 
