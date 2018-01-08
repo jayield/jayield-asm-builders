@@ -8,10 +8,12 @@ import java.util.Optional;
 
 public class CustomClassVisitor extends ClassVisitor implements Opcodes {
     private final String targetName;
+    private final String originalName;
 
 
-    public CustomClassVisitor(ClassVisitor cv, String targetName) {
+    public CustomClassVisitor(ClassVisitor cv, String targetName, String originalName) {
         super(ASM6, cv);
+        this.originalName = originalName;
         this.cv = cv;
         this.targetName = targetName;
 
@@ -30,12 +32,17 @@ public class CustomClassVisitor extends ClassVisitor implements Opcodes {
     @Override
     public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
         if(!name.equals(targetName))
-            return super.visitMethod(access, name, desc, signature, exceptions);
+            return new InvokeDynamicMethodVisitor(
+                    super.visitMethod(access, name, desc, signature, exceptions),
+                    originalName,
+                    targetName);
         return new CustomMethodVisitor(super.visitMethod(ACC_PUBLIC + ACC_STATIC,
                 name,
                 desc.replace(";)V",";)Z"),
                 signature,
-                exceptions));
+                exceptions),
+                originalName,
+                targetName);
     }
 
 }

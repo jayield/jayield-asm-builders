@@ -3,10 +3,10 @@ package visitors;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
-public class CustomMethodVisitor extends MethodVisitor implements Opcodes{
+public class CustomMethodVisitor extends InvokeDynamicMethodVisitor implements Opcodes{
 
-    public CustomMethodVisitor(MethodVisitor mv) {
-        super(ASM6, mv);
+    public CustomMethodVisitor(MethodVisitor mv, String originalName, String newName) {
+        super(mv, originalName, newName);
     }
 
     @Override

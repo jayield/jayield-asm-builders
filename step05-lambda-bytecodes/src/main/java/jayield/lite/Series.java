@@ -1,6 +1,8 @@
 package jayield.lite;
 
 import jayield.lite.boxes.BoolBox;
+import jayield.lite.boxes.Box;
+import jdk.internal.org.objectweb.asm.util.ASMifier;
 import loaders.ByteArrayClassLoader;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
@@ -12,6 +14,8 @@ import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 
 public class Series<T> {
 
@@ -41,6 +45,20 @@ public class Series<T> {
         this.advancer = advancer;
     }
 
+    public static <U> Series<U> iterate(U seed, UnaryOperator<U> f) {
+        Traversable<U> b = yield -> {
+            for(U i = seed; true; i = f.apply(i))
+                yield.ret(i);
+        };
+        Box<U> box = new Box<>(seed, f);
+        Advancer<U> a = yield -> {
+                yield.ret(box.getValue());
+                box.inc();
+                return true;
+        };
+        return new Series<>(b, a);
+    }
+
     public <R> Series<R> advanceWith(Function<Series<T>, Advancer<R>> then) {
         Advancer<R> a = then.apply(this);
         Traversable<R> b = yield -> {while(a.tryAdvance(yield)){}};
@@ -55,18 +73,33 @@ public class Series<T> {
         return new Series<>(b, ta);
     }
 
+    public Series<T> takeWhile(Predicate<T> predicate) {
+        final BoolBox passed = new BoolBox();
+        return advanceWith(src -> yield -> {
+            passed.reset();
+            Yield<T> takeWhile = item -> {
+                if(predicate.test(item)){
+                    passed.set();
+                    yield.ret(item);
+                }
+            };
+            return src.tryAdvance(takeWhile) && passed.isTrue();
+        });
+    }
+
     private <R> Advancer<R> inspect(Traversable<R> b) {
         try {
             SerializedLambda lambda = getSerializedLambda(b);
             String outPath = Series.class.getProtectionDomain().getCodeSource().getLocation().getPath(); // get path
             ClassReader cr = new ClassReader(lambda.getImplClass()); // "App"
             ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-            CustomClassVisitor ccv = new CustomClassVisitor(cw, lambda.getImplMethodName()); // lambda generated name
+            CustomClassVisitor ccv = new CustomClassVisitor(cw, lambda.getImplMethodName(), lambda.getCapturingClass()); // lambda generated name
             cr.accept(ccv, 0);
             FileOutputStream fos = new FileOutputStream(outPath + "./" + lambda.getImplMethodName() + ".class");
             byte[] targetBytes = cw.toByteArray();
             fos.write(targetBytes);
             fos.close();
+//            ASMifier.main(new String[]{outPath + "./" + lambda.getImplMethodName() + ".class"});
             Object[] arguments = getCapturedArguments(lambda);
             Class<?>[] capturedArgumentClasses = new Class<?>[arguments.length];
             Class<?> newClass = ByteArrayClassLoader
@@ -76,6 +109,7 @@ public class Series<T> {
             for(Method m : methods){
                 if(m.getName().equals(lambda.getImplMethodName())){
                     method[0] = m;
+                    method[0].setAccessible(true);
                 }
             }
             final BoolBox box = new BoolBox();
@@ -87,7 +121,7 @@ public class Series<T> {
                 };
                 arguments[arguments.length - 1] = wrap;
                 try {
-                    while(box.isFalse() && (Boolean) method[0].invoke(arguments));
+                    while(box.isFalse() && (Boolean) method[0].invoke(newClass, arguments));
                     return box.isTrue();
                 } catch (IllegalAccessException | InvocationTargetException e) {
                     throw new RuntimeException(e);

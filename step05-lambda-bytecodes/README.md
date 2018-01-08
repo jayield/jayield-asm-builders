@@ -14,16 +14,28 @@ Then we obtain an instance of SerializedLambda by invoking the method writeRepla
     }
 ``` 
 
-And finally we instrument the lambda's code by running it through a custom ClassVisitor that makes the instrumented class Implement ``YieldWrapper`` and changes the name of the method that returns the lambda to ``tryAdvanceWrapper`` as well as changing it's code, where traverse would be called it now calls tryAdvance. 
+And finally we instrument a copy of class that declares the lambda's code by running it through a custom ClassVisitor that will change the method that instantiates the lambda by returning an Advancer instead of a Traverser.
 
-The problem with this is that a lambda can have many captured arguments and with this solution the number of captured arguments are static.
+To do so, we have to run all methods through a Method visitor that changes the invokeDynamic's handlers owners from the original class to the new one (The one we're instrumenting) and the method that instantiates the lambda through yet another Method visitor that changes the method called from traverse to tryAdvance.
 
-To solve this we could try and possibly use a MethodInvoke, like so:
-
+After this we get a hold of the method that instantiates the lambda and wrap it in a way that resembles what was described in step03:
 ```
-Method method = lambda.getClass().getDeclaredMethod(name);
-method.invoke(instance, argArray);
+final BoolBox box = new BoolBox();
+return y -> {
+    box.reset();
+    Yield<R> wrap = wr -> {
+        y.ret(wr);
+        box.set();
+    };
+    arguments[arguments.length - 1] = wrap;
+    try {
+        while(box.isFalse() && (Boolean) method[0].invoke(newClass, arguments));
+        return box.isTrue();
+    } catch (IllegalAccessException | InvocationTargetException e) {
+        throw new RuntimeException(e);
+    }
+};
 ```
 
-Where name would be the name of the method that instantiates the lambda (as an ``Advancer``) and argArray would be the captured arguments of said lambda.
-This would create the lambda so we would still need to call the ``tryAdvance`` Method of the ``Advancer`` Interface.
+
+  
