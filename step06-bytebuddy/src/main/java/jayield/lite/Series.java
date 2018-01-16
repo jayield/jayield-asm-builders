@@ -1,6 +1,10 @@
 package jayield.lite;
 
+import jayield.lite.boxes.BoolBox;
+import jayield.lite.boxes.Box;
+import jayield.lite.boxes.IntBox;
 import jdk.internal.org.objectweb.asm.util.ASMifier;
+import loaders.ByteArrayClassLoader;
 import net.bytebuddy.agent.ByteBuddyAgent;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.dynamic.ClassFileLocator;
@@ -13,7 +17,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 public class Series<T> {
 
@@ -31,6 +37,33 @@ public class Series<T> {
 
     public final boolean tryAdvance(Yield<T> yield) {
         return advancer.tryAdvance(yield);
+    }
+
+    public static <U> Series<U> iterate(U seed, UnaryOperator<U> f) {
+        Traversable<U> b = yield -> {
+            for(U i = seed; true; i = f.apply(i))
+                yield.ret(i);
+        };
+        Box<U> box = new Box<>(seed, f);
+        Advancer<U> a = yield -> {
+            yield.ret(box.getValue());
+            box.inc();
+            return true;
+        };
+        return new Series<>(b, a);
+    }
+
+    public static <U> Series<U> of(U...data) {
+        Traversable<U> b = yield -> {
+            for (int i = 0; i < data.length; i++) { yield.ret(data[i]); }
+        };
+        IntBox index = new IntBox(-1);
+        Advancer<U> a = yield -> {
+            int i;
+            if((i = index.inc()) < data.length) yield.ret(data[i]);
+            return i < data.length;
+        };
+        return new Series<>(b, a);
     }
 
     public static <U> Series<U> empty() {
@@ -61,16 +94,33 @@ public class Series<T> {
             String outPath = Series.class.getProtectionDomain().getCodeSource().getLocation().getPath(); // get path
             Class<?> clazz = b.getClass();
             String newName = getNewName(clazz);
-            ClassReader cr = new ClassReader(new ByteArrayInputStream(getByteCodeOf(clazz)));
+            byte[] originByteCode = getByteCodeOf(clazz);
+            ClassReader cr = new ClassReader(new ByteArrayInputStream(originByteCode));
             ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-            CustomClassVisitor ccv = new CustomClassVisitor(cw, newName); // lambda generated name
+            CustomClassVisitor ccv = new CustomClassVisitor(cw, newName, clazz.getName()); // lambda generated name
             cr.accept(ccv, 0);
             byte[] targetBytes = cw.toByteArray();
+            FileOutputStream fosOriginal = new FileOutputStream(outPath + "./original"  + ".class");
+            fosOriginal.write(originByteCode);
+            fosOriginal.close();
             FileOutputStream fos = new FileOutputStream(outPath + "./" + newName + ".class");
             fos.write(targetBytes);
             fos.close();
-            Object[] capturedArguments = getCapturedArguments(b);
+            Object[] arguments = getCapturedArguments(b);
             ASMifier.main(new String[]{outPath + newName + ".class"});
+//            ASMifier.main(new String[]{outPath + "original.class"});
+            Class<?>[] capturedArgumentClasses = new Class<?>[arguments.length];
+            Class<?> newClass = ByteArrayClassLoader
+                    .load(newName, targetBytes);
+            Method[] methods = newClass.getDeclaredMethods();
+            Method[] method = new Method[1];
+            for(Method m : methods){
+                if(m.getName().equals("get$Lambda")){
+                    method[0] = m;
+                    method[0].setAccessible(true);
+                }
+            }
+            return (Advancer<R>) method[0].invoke(newClass, arguments);
         } catch (Exception e) {
             e.printStackTrace();
         }

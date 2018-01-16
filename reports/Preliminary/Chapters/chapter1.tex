@@ -144,7 +144,7 @@ A valid definition of a map Advancer would be:
 
 With that said, there are corner cases that do not follow the pre-conditions as is the case of the flatMap operation which does not call yield.ret(...), these cases need further studying.
 
-Nevertheless, following the suggested approach we will need to generate code at runtime, to do this we will use ASM, a library for java bytecode manipulation at runtime. In order to read the bytecode via ASM we first need to give it (via the ClassReader) the actual bytecode of the Traversable. The problem is, if the Traversable was generated using a lambda function, that the lambda's class is generated at runtime via the LambdaMetaFactory class and therefore the normal method of getting the bytecode does not work, aside from that we also needed to any fields the Traversable's class may have, in the case of the lambda, they would be captured arguments.
+Nevertheless, following the suggested approach we will need to generate code at runtime, to do this we will use ASM, a library for java bytecode manipulation at runtime. In order to read the bytecode via ASM we first need to give it (via the ClassReader) the actual bytecode of the Traversable. The problem is, if the Traversable was generated using a lambda function, that the lambda's class is generated at runtime via the LambdaMetaFactory class and therefore the normal method of getting the bytecode does not work, aside from that we also needed to get any fields the Traversable's class may have, in the case of the lambda, they would be captured arguments.
 
 To solve this issue, two paths were found\citep{stackoverflowlambdacode}, the use of SerializedLambda\citep{serializedlambda} or the use of another library called Bytebuddy.
 

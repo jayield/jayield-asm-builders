@@ -2,6 +2,7 @@ package jayield.lite;
 
 import jayield.lite.boxes.BoolBox;
 import jayield.lite.boxes.Box;
+import jayield.lite.boxes.IntBox;
 import jdk.internal.org.objectweb.asm.util.ASMifier;
 import loaders.ByteArrayClassLoader;
 import org.objectweb.asm.ClassReader;
@@ -55,6 +56,19 @@ public class Series<T> {
                 yield.ret(box.getValue());
                 box.inc();
                 return true;
+        };
+        return new Series<>(b, a);
+    }
+
+    public static <U> Series<U> of(U...data) {
+        Traversable<U> b = yield -> {
+            for (int i = 0; i < data.length; i++) { yield.ret(data[i]); }
+        };
+        IntBox index = new IntBox(-1);
+        Advancer<U> a = yield -> {
+            int i;
+            if((i = index.inc()) < data.length) yield.ret(data[i]);
+            return i < data.length;
         };
         return new Series<>(b, a);
     }

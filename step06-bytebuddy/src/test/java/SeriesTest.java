@@ -1,8 +1,5 @@
-import jayield.lite.Advancer;
 import jayield.lite.Series;
 import jayield.lite.Traversable;
-import jayield.lite.Yield;
-import jayield.lite.boxes.BoolBox;
 import jayield.lite.boxes.IntBox;
 import org.junit.Assert;
 import org.junit.Test;

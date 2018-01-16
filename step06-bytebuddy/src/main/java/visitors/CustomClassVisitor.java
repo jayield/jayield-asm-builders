@@ -8,17 +8,17 @@ import org.objectweb.asm.Opcodes;
 import java.util.Optional;
 
 public class CustomClassVisitor extends ClassVisitor implements Opcodes {
-    private final ClassVisitor cv;
     private final String targetName;
-    private String[] interfaces;
-    private MethodVisitor mv;
+    private final String originalName;
+    private final String[] interfaces;
 
 
-    public CustomClassVisitor(ClassVisitor cv, String targetName) {
+    public CustomClassVisitor(ClassVisitor cv, String targetName, String originalName) {
         super(ASM6, cv);
+        this.originalName = originalName;
         this.cv = cv;
         this.targetName = targetName;
-        interfaces = new String[] {Advancer.class.getCanonicalName().replace('.', '/')};
+        interfaces = new String[]{Advancer.class.getCanonicalName().replace('.', '/')};
 
     }
 
@@ -34,14 +34,20 @@ public class CustomClassVisitor extends ClassVisitor implements Opcodes {
 
     @Override
     public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-        if(!name.equals(targetName))
-            return super.visitMethod(access, name, desc, signature, exceptions);
-        System.out.println("found it");
-        return new CustomMethodVisitor(super.visitMethod(ACC_PUBLIC + ACC_INTERFACE + ACC_FINAL, "tryAdvanceWrapper", desc, signature, exceptions));
-    }
-
-    public void setInterfaces(String[] interfaces) {
-        this.interfaces = interfaces;
+        if (name.equals("traverse")) {
+            return new CustomMethodVisitor(super.visitMethod(ACC_PUBLIC,
+                    "tryAdvance",
+                    desc.replace(";)V", ";)Z"),
+                    signature,
+                    exceptions),
+                    originalName,
+                    targetName);
+        } else {
+            return new OwnerMapperMethodVisitor(
+                    super.visitMethod(access, name, desc, signature, exceptions),
+                    originalName,
+                    targetName);
+        }
     }
 
 }
