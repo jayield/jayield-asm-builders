@@ -23,6 +23,9 @@ public class AdvancerGenerator {
     public static <R> Advancer<R> gernerateAdvancer(Traversable<R> source) {
         SerializedLambda lambda = getSerializedLambdaFromTraversable(source);
         byte[] bytecode = generateAdvancerClassByteCode(lambda);
+//        printASM(getOutputPath() + AdvancerGenerator.class.getName().replace('.','/') + ".class");
+//        writeClassToFile(getGeneratedFilename(lambda,getOutputPath()), bytecode);
+//        printASM(getOutputPath() + lambda.getImplMethodName() + ".class");
         Class<?> generatedClass = loadGeneratedClass(lambda, bytecode);
         return new AdvancerWrapper<>(getAdvancer(generatedClass, lambda));
 

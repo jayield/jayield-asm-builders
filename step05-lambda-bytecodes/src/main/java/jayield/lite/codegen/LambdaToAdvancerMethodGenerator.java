@@ -16,6 +16,7 @@ public class LambdaToAdvancerMethodGenerator implements Opcodes {
 
     /* MAPPERS */
     private static final Map<Character, Consumer<MethodVisitor>> PRIMITIVE_TYPE_MAPPER;
+
     static {
         PRIMITIVE_TYPE_MAPPER = new HashMap<>();
 
@@ -83,6 +84,7 @@ public class LambdaToAdvancerMethodGenerator implements Opcodes {
             mv.visitMethodInsn(INVOKEVIRTUAL, doubleType, doubleValue, doubleDescription, false);
         });
     }
+
     /* KEY STRINGS */
     private static final String LAMBDA_TO_ADVANCER_INTERFACE_METHOD_NAME = "getAdvancer";
     private static final String SERIALIZED_LAMBDA_NAME = classNameToPath(SerializedLambda.class);
@@ -185,7 +187,7 @@ public class LambdaToAdvancerMethodGenerator implements Opcodes {
         Consumer<MethodVisitor>[] result = new Consumer[lambda.getCapturedArgCount()];
         String[] signatureTokens = getSignatureTokens(lambda.getImplMethodSignature());
         for (int i = 0; i < signatureTokens.length; i++) {
-            if(signatureTokens[i].length() > 1){
+            if (signatureTokens[i].length() > 1) {
                 result[i] = typeCast(signatureTokens[i]);
             } else {
                 result[i] = PRIMITIVE_TYPE_MAPPER.get(signatureTokens[i].charAt(0));
@@ -202,16 +204,24 @@ public class LambdaToAdvancerMethodGenerator implements Opcodes {
         String[] tokens = new String[lambda.getCapturedArgCount()];
         int tokenCount = 0;
         int charIndexer = 0;
-        while(tokenCount < lambda.getCapturedArgCount()) {
+        while (tokenCount < lambda.getCapturedArgCount()) {
             char currentCharacter = signature.charAt(charIndexer);
-            if(currentCharacter == COMPLEX_TYPE_START){
+            if (currentCharacter == COMPLEX_TYPE_START) {
                 int typeDescriptionEndIndex = signature.indexOf(COMPLEX_TYPE_END, charIndexer);
                 tokens[tokenCount++] = signature.substring(charIndexer + 1, typeDescriptionEndIndex); // + 1, Start after the L character
                 charIndexer = typeDescriptionEndIndex;
-            } else {
-                if(currentCharacter != SIGNATURE_START_CHARACTER){
-                    tokens[tokenCount++] = String.valueOf(currentCharacter);
+            } else if (currentCharacter == '[') {
+                char nextChar = signature.charAt(charIndexer + 1);
+                if (nextChar == COMPLEX_TYPE_START) {
+                    int typeDescriptionEndIndex = signature.indexOf(COMPLEX_TYPE_END, charIndexer);
+                    tokens[tokenCount++] = signature.substring(charIndexer, typeDescriptionEndIndex);
+                    charIndexer = typeDescriptionEndIndex + 1;
+                } else {
+                    tokens[tokenCount++] = signature.substring(charIndexer, charIndexer + 2);
+                    charIndexer = charIndexer + 1;
                 }
+            } else if (currentCharacter != SIGNATURE_START_CHARACTER) {
+                tokens[tokenCount++] = String.valueOf(currentCharacter);
             }
             charIndexer++;
         }
