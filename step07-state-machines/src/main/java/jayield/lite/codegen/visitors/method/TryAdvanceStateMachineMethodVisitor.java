@@ -1,7 +1,6 @@
 package jayield.lite.codegen.visitors.method;
 
 import jayield.lite.Yield;
-import jayield.lite.codegen.GeneratorUtils;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 
@@ -14,6 +13,7 @@ public class TryAdvanceStateMachineMethodVisitor extends ChangeOwnersMethodVisit
     private static final String YIELD_METHOD_DESCRIPTION = "(Ljava/lang/Object;)V";
     private final String stateFieldName;
     private int state = 0;
+    private Label nextLabel;
 
 
     public TryAdvanceStateMachineMethodVisitor(MethodVisitor methodVisitor, String originalName, String newName, String stateFieldName) {
@@ -22,11 +22,20 @@ public class TryAdvanceStateMachineMethodVisitor extends ChangeOwnersMethodVisit
     }
 
     @Override
+    public void visitCode() {
+        super.visitCode();
+        nextLabel = new Label();
+        startState(nextLabel);
+
+    }
+
+    @Override
     public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
+        super.visitMethodInsn(opcode, owner, name, desc, itf);
         if (isYield(opcode, owner, name, desc, itf)) {
-            createState(opcode, owner, name, desc, itf);
-        } else {
-            super.visitMethodInsn(opcode, owner, name, desc, itf);
+            finishState();
+            nextLabel = new Label();
+            startState(nextLabel);
         }
     }
 
@@ -34,31 +43,14 @@ public class TryAdvanceStateMachineMethodVisitor extends ChangeOwnersMethodVisit
     public void visitInsn(int opcode) {
         if (opcode == RETURN) {
             // return false
+            finishState();
             super.visitInsn(ICONST_0);
             super.visitInsn(IRETURN);
         }
         super.visitInsn(opcode);
     }
 
-    private void createState(int opcode, String owner, String name, String desc, boolean itf) {
-        Label elseLabel = new Label();
-
-        // Push State value to compare with
-        super.visitLdcInsn(state);
-        state++;
-        // Load state field and current state
-        super.visitFieldInsn(GETSTATIC, newOwner, stateFieldName, INT_ARRAY_DESCRIPTION);
-        super.visitInsn(ICONST_0);
-        super.visitInsn(IALOAD);
-
-        // if current state does not match this state, jump to else
-        super.visitInsn(ISUB);
-        super.visitJumpInsn(IFNE, elseLabel);
-
-        //:::: IF BLOCK CODE ::::
-
-        // Call Yield Return
-        super.visitMethodInsn(opcode, owner, name, desc, itf);
+    private void finishState() {
         // Increment current state
         super.visitFieldInsn(GETSTATIC, newOwner, stateFieldName, INT_ARRAY_DESCRIPTION);
         super.visitInsn(ICONST_0);
@@ -72,12 +64,21 @@ public class TryAdvanceStateMachineMethodVisitor extends ChangeOwnersMethodVisit
         super.visitInsn(ICONST_1);
         super.visitInsn(IRETURN);
 
-        //:::: ELSE BLOCK CODE ::::
-        super.visitLabel(elseLabel);
+        // set State End Label
+        super.visitLabel(nextLabel);
+    }
 
-        //POP loaded values from stack
-        super.visitInsn(POP);
-        super.visitInsn(POP);
+    private void startState(Label nextStateLabel) {
+        super.visitLdcInsn(state);
+        state++;
+        // Load state field and current state
+        super.visitFieldInsn(GETSTATIC, newOwner, stateFieldName, INT_ARRAY_DESCRIPTION);
+        super.visitInsn(ICONST_0);
+        super.visitInsn(IALOAD);
+
+        // if current state does not match this state, jump to else
+        super.visitInsn(ISUB);
+        super.visitJumpInsn(IFNE, nextStateLabel);
     }
 
     private boolean isYield(int opcode, String owner, String name, String desc, boolean isInterface) {

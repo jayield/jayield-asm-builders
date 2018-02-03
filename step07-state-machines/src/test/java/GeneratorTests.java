@@ -8,11 +8,6 @@ import java.util.List;
 
 public class GeneratorTests {
 
-    private static final int[] state = {0};
-
-    private static void method() {
-        state[0] = state[0] - 2 ;
-    }
 
     @Test
     public void testSimpleGenerator() {
@@ -22,9 +17,13 @@ public class GeneratorTests {
 
         Series<Integer> series = Series.empty()
                 .traverseWith(source -> yield -> {
+                    System.out.println("Executing for 0");
                     yield.ret(0);
+                    System.out.println("Executing for 1");
                     yield.ret(1);
+                    System.out.println("Executing for 2");
                     yield.ret(2);
+                    System.out.println("Executing for 2");
                     yield.ret(3);
                 });
 
