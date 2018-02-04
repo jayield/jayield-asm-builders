@@ -31,7 +31,7 @@ public class YieldStateMachineVisitor extends ClassVisitor implements Opcodes {
         this.sourceName = sourceName;
         this.source = source;
         this.interfaces = new String[]{classNameToPath(LambdaToAdvancer.class)};
-        this.advanverMethodGenerator = new LambdaToAdvancerMethodGenerator(source,this,finalName);
+        this.advanverMethodGenerator = new LambdaToAdvancerMethodGenerator(source, this, finalName);
     }
 
     // Change class Name
@@ -63,6 +63,7 @@ public class YieldStateMachineVisitor extends ClassVisitor implements Opcodes {
                     desc.replace(";)V", ";)Z"),
                     signature,
                     exceptions),
+                    this,
                     sourceName,
                     finalName,
                     STATE_FIELD_NAME);

@@ -1,6 +1,8 @@
 package jayield.lite.codegen.visitors.method;
 
 import jayield.lite.Yield;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 
@@ -11,14 +13,30 @@ public class TryAdvanceStateMachineMethodVisitor extends ChangeOwnersMethodVisit
 
     private static final String YIELD_METHOD_NAME = "ret";
     private static final String YIELD_METHOD_DESCRIPTION = "(Ljava/lang/Object;)V";
+
+    private final ClassVisitor cv;
     private final String stateFieldName;
     private int state = 0;
     private Label nextLabel;
 
 
-    public TryAdvanceStateMachineMethodVisitor(MethodVisitor methodVisitor, String originalName, String newName, String stateFieldName) {
+    public TryAdvanceStateMachineMethodVisitor(MethodVisitor methodVisitor,
+                                               ClassVisitor cv,
+                                               String originalName,
+                                               String newName,
+                                               String stateFieldName) {
         super(methodVisitor, originalName, newName);
+        this.cv = cv;
         this.stateFieldName = stateFieldName;
+    }
+
+    @Override
+    public void visitLocalVariable(String name, String desc, String signature, Label start, Label end, int index){
+        super.visitLocalVariable(name, desc, signature, start, end, index);
+        if (!name.equals("yield")) {
+            FieldVisitor fv = cv.visitField(ACC_PRIVATE + ACC_STATIC, name, desc, signature, null);
+            fv.visitEnd();
+        }
     }
 
     @Override
@@ -26,7 +44,28 @@ public class TryAdvanceStateMachineMethodVisitor extends ChangeOwnersMethodVisit
         super.visitCode();
         nextLabel = new Label();
         startState(nextLabel);
+    }
 
+    @Override
+    public void visitIincInsn(int var, int increment) {
+        super.visitIincInsn(var, increment);
+        super.visitVarInsn(ILOAD, var);
+        super.visitFieldInsn(PUTSTATIC, newOwner, "n", "I");
+    }
+
+    @Override
+    public void visitVarInsn(int opcode, int var) {
+        if(var == 1 && ((opcode & ILOAD) != 0)) {
+            super.visitFieldInsn(GETSTATIC, newOwner, "n", "I");
+            super.visitVarInsn(ISTORE, 1);
+            super.visitVarInsn(opcode, var);
+        } else if(var == 1 && ((opcode & ISTORE) != 0)) {
+            super.visitFieldInsn(PUTSTATIC, newOwner, "n", "I");
+            super.visitFieldInsn(GETSTATIC, newOwner, "n", "I");
+            super.visitVarInsn(ISTORE, 1);
+        } else {
+            super.visitVarInsn(opcode, var);
+        }
     }
 
     @Override

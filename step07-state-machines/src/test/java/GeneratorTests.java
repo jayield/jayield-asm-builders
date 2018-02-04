@@ -8,6 +8,8 @@ import java.util.List;
 
 public class GeneratorTests {
 
+    private static int[] state = {0};
+
 
     @Test
     public void testSimpleGenerator() {
@@ -17,20 +19,25 @@ public class GeneratorTests {
 
         Series<Integer> series = Series.empty()
                 .traverseWith(source -> yield -> {
+                    int n = 0;
                     System.out.println("Executing for 0");
-                    yield.ret(0);
+                    yield.ret(n++);
                     System.out.println("Executing for 1");
-                    yield.ret(1);
+                    yield.ret(n++);
                     System.out.println("Executing for 2");
-                    yield.ret(2);
-                    System.out.println("Executing for 2");
-                    yield.ret(3);
+                    yield.ret(n++);
+                    System.out.println("Executing for 3");
+                    yield.ret(n++);
                 });
 
 
+        System.out.println("Executing");
         while (series.tryAdvance(actual::add)) {
+            System.out.println("Executed");
             step++;
             Assert.assertEquals(step, actual.size());
+            if (step < 3)
+                System.out.println("Executing");
         }
         Assert.assertEquals(expected.size(), actual.size());
         for (int i = 0; i < actual.size(); i++) {
