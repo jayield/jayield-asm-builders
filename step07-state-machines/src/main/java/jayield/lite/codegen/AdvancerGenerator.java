@@ -3,6 +3,7 @@ package jayield.lite.codegen;
 import jayield.lite.Advancer;
 import jayield.lite.Series;
 import jayield.lite.Traversable;
+import jayield.lite.codegen.visitors.clazz.LocalVariableExtractorClassVisitor;
 import jayield.lite.codegen.visitors.clazz.TraversableToAdvancerVisitor;
 import jayield.lite.codegen.visitors.clazz.YieldStateMachineVisitor;
 import jayield.lite.codegen.wrappers.AdvancerWrapper;
@@ -48,11 +49,17 @@ public class AdvancerGenerator {
 
     private static byte[] generateAdvancerClassByteCode(SerializedLambda lambda) {
         try {
-            ClassReader cr = new ClassReader(lambda.getImplClass());
-            ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-            YieldStateMachineVisitor ccv = new YieldStateMachineVisitor(cw, lambda.getImplMethodName(), lambda.getCapturingClass(), lambda); // lambda generated name
-            cr.accept(ccv, 0);
-            return cw.toByteArray();
+            ClassReader instrumentedClassReader = new ClassReader(lambda.getImplClass());
+            ClassReader localVariableClassReader = new ClassReader(lambda.getImplClass());
+            ClassWriter instrumentedClassWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
+            ClassWriter localVariableClassWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
+
+            LocalVariableExtractorClassVisitor lvcv = new LocalVariableExtractorClassVisitor(localVariableClassWriter,lambda.getImplMethodName());
+            localVariableClassReader.accept(lvcv, 0);
+
+            YieldStateMachineVisitor ccv = new YieldStateMachineVisitor(instrumentedClassWriter, lambda.getImplMethodName(), lambda.getCapturingClass(), lambda, lvcv.getLocalVariables()); // lambda generated name
+            instrumentedClassReader.accept(ccv, 0);
+            return instrumentedClassWriter.toByteArray();
         } catch (IOException e) {
             e.printStackTrace();
             throw new RuntimeException(e);

@@ -6,6 +6,8 @@ import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 
+import java.util.Map;
+
 import static jayield.lite.codegen.GeneratorUtils.classNameToPath;
 import static jayield.lite.codegen.visitors.Constants.INT_ARRAY_DESCRIPTION;
 
@@ -16,6 +18,7 @@ public class TryAdvanceStateMachineMethodVisitor extends ChangeOwnersMethodVisit
 
     private final ClassVisitor cv;
     private final String stateFieldName;
+    private final Map<Integer, LocalVariable> localVariables;
     private int state = 0;
     private Label nextLabel;
 
@@ -24,14 +27,17 @@ public class TryAdvanceStateMachineMethodVisitor extends ChangeOwnersMethodVisit
                                                ClassVisitor cv,
                                                String originalName,
                                                String newName,
-                                               String stateFieldName) {
+                                               String stateFieldName,
+                                               Map<Integer, LocalVariable> localVariables) {
         super(methodVisitor, originalName, newName);
         this.cv = cv;
         this.stateFieldName = stateFieldName;
+        this.localVariables = localVariables;
+        System.out.println(localVariables);
     }
 
     @Override
-    public void visitLocalVariable(String name, String desc, String signature, Label start, Label end, int index){
+    public void visitLocalVariable(String name, String desc, String signature, Label start, Label end, int index) {
         super.visitLocalVariable(name, desc, signature, start, end, index);
         if (!name.equals("yield")) {
             FieldVisitor fv = cv.visitField(ACC_PRIVATE + ACC_STATIC, name, desc, signature, null);
@@ -48,24 +54,24 @@ public class TryAdvanceStateMachineMethodVisitor extends ChangeOwnersMethodVisit
 
     @Override
     public void visitIincInsn(int var, int increment) {
+        LocalVariable localVariable = this.localVariables.get(var);
         super.visitIincInsn(var, increment);
         super.visitVarInsn(ILOAD, var);
-        super.visitFieldInsn(PUTSTATIC, newOwner, "n", "I");
+        super.visitFieldInsn(PUTSTATIC, newOwner, localVariable.getName(), localVariable.getDesc());
     }
 
     @Override
     public void visitVarInsn(int opcode, int var) {
-        if(var == 1 && ((opcode & ILOAD) != 0)) {
-            super.visitFieldInsn(GETSTATIC, newOwner, "n", "I");
-            super.visitVarInsn(ISTORE, 1);
-            super.visitVarInsn(opcode, var);
-        } else if(var == 1 && ((opcode & ISTORE) != 0)) {
-            super.visitFieldInsn(PUTSTATIC, newOwner, "n", "I");
-            super.visitFieldInsn(GETSTATIC, newOwner, "n", "I");
-            super.visitVarInsn(ISTORE, 1);
-        } else {
-            super.visitVarInsn(opcode, var);
+        if (isLoadOpcode(opcode) && var > 0) {
+            LocalVariable localVariable = this.localVariables.get(var);
+            super.visitFieldInsn(GETSTATIC, newOwner, localVariable.getName(), localVariable.getDesc());
+            super.visitVarInsn(opcode + 33, var);
+        } else if (isStoreOpcode(opcode) && var > 0) {
+            LocalVariable localVariable = this.localVariables.get(var);
+            super.visitFieldInsn(PUTSTATIC, newOwner, localVariable.getName(), localVariable.getDesc());
+            super.visitFieldInsn(GETSTATIC, newOwner, localVariable.getName(), localVariable.getDesc());
         }
+        super.visitVarInsn(opcode, var);
     }
 
     @Override
@@ -126,5 +132,47 @@ public class TryAdvanceStateMachineMethodVisitor extends ChangeOwnersMethodVisit
                 name.equals(YIELD_METHOD_NAME) &&
                 desc.equals(YIELD_METHOD_DESCRIPTION) &&
                 isInterface;
+    }
+
+    private boolean isLoadOpcode(int opcode) {
+        switch (opcode) {
+            case ALOAD:
+            case FLOAD:
+            case LLOAD:
+            case ILOAD:
+            case AALOAD:
+            case BALOAD:
+            case CALOAD:
+            case DALOAD:
+            case DLOAD:
+            case FALOAD:
+            case IALOAD:
+            case LALOAD:
+            case SALOAD:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private boolean isStoreOpcode(int opcode) {
+        switch (opcode) {
+            case ASTORE:
+            case FSTORE:
+            case LSTORE:
+            case ISTORE:
+            case AASTORE:
+            case BASTORE:
+            case CASTORE:
+            case DASTORE:
+            case DSTORE:
+            case FASTORE:
+            case IASTORE:
+            case LASTORE:
+            case SASTORE:
+                return true;
+            default:
+                return false;
+        }
     }
 }

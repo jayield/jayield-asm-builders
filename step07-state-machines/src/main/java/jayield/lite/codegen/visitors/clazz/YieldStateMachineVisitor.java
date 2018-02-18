@@ -1,9 +1,9 @@
 package jayield.lite.codegen.visitors.clazz;
 
 import jayield.lite.codegen.LambdaToAdvancerMethodGenerator;
-import jayield.lite.codegen.visitors.method.AdvancerMethodVisitor;
-import jayield.lite.codegen.visitors.method.InitMethodVisitor;
 import jayield.lite.codegen.visitors.method.ChangeOwnersMethodVisitor;
+import jayield.lite.codegen.visitors.method.InitMethodVisitor;
+import jayield.lite.codegen.visitors.method.LocalVariable;
 import jayield.lite.codegen.visitors.method.TryAdvanceStateMachineMethodVisitor;
 import jayield.lite.codegen.wrappers.LambdaToAdvancer;
 import org.objectweb.asm.ClassVisitor;
@@ -12,6 +12,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
 import java.lang.invoke.SerializedLambda;
+import java.util.Map;
 
 import static jayield.lite.codegen.GeneratorUtils.classNameToPath;
 
@@ -22,14 +23,16 @@ public class YieldStateMachineVisitor extends ClassVisitor implements Opcodes {
     private final String finalName;
     private final String sourceName;
     private final SerializedLambda source;
+    private final Map<Integer, LocalVariable> localVariables;
     private final String[] interfaces;
     private final LambdaToAdvancerMethodGenerator advanverMethodGenerator;
 
-    public YieldStateMachineVisitor(ClassVisitor cv, String finalName, String sourceName, SerializedLambda source) {
+    public YieldStateMachineVisitor(ClassVisitor cv, String finalName, String sourceName, SerializedLambda source, Map<Integer, LocalVariable> localVariables) {
         super(ASM6, cv);
         this.finalName = finalName;
         this.sourceName = sourceName;
         this.source = source;
+        this.localVariables = localVariables;
         this.interfaces = new String[]{classNameToPath(LambdaToAdvancer.class)};
         this.advanverMethodGenerator = new LambdaToAdvancerMethodGenerator(source, this, finalName);
     }
@@ -66,7 +69,8 @@ public class YieldStateMachineVisitor extends ClassVisitor implements Opcodes {
                     this,
                     sourceName,
                     finalName,
-                    STATE_FIELD_NAME);
+                    STATE_FIELD_NAME,
+                    this.localVariables);
         }
     }
 }

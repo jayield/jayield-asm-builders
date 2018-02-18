@@ -20,13 +20,14 @@ public class GeneratorTests {
         Series<Integer> series = Series.empty()
                 .traverseWith(source -> yield -> {
                     int n = 0;
-                    System.out.println("Executing for 0");
+                    String template = "Executing for %d";
+                    System.out.println(String.format(template, n));
                     yield.ret(n++);
-                    System.out.println("Executing for 1");
+                    System.out.println(String.format(template, n));
                     yield.ret(n++);
-                    System.out.println("Executing for 2");
+                    System.out.println(String.format(template, n));
                     yield.ret(n++);
-                    System.out.println("Executing for 3");
+                    System.out.println(String.format(template, n));
                     yield.ret(n++);
                 });
 
