@@ -6,4 +6,5 @@ include 'step04-visitor'
 include 'step05-lambda-bytecodes'
 include 'step06-bytebuddy'
 include 'step07-state-machines'
+include 'step08-external-iteration'
 
