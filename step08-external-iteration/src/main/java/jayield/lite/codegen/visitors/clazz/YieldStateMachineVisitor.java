@@ -4,7 +4,7 @@ import jayield.lite.codegen.LambdaToAdvancerMethodGenerator;
 import jayield.lite.codegen.visitors.method.ChangeOwnersMethodVisitor;
 import jayield.lite.codegen.visitors.method.ConstructorVisitor;
 import jayield.lite.codegen.visitors.method.LocalVariable;
-import jayield.lite.codegen.visitors.method.TryAdvanceStateMachineMethodVisitor;
+import jayield.lite.codegen.visitors.method.StateMachineMethodVisitor;
 import jayield.lite.codegen.wrappers.LambdaToAdvancer;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.FieldVisitor;
@@ -61,7 +61,7 @@ public class YieldStateMachineVisitor extends ClassVisitor implements Opcodes {
                     sourceName,
                     finalName);
         } else {
-            return new TryAdvanceStateMachineMethodVisitor(super.visitMethod(ACC_PUBLIC + ACC_STATIC,
+            return new StateMachineMethodVisitor(super.visitMethod(ACC_PUBLIC + ACC_STATIC,
                     name,
                     desc.replace(";)V", ";)Z"),
                     signature,

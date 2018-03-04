@@ -1,11 +1,13 @@
 package jayield.lite.codegen.visitors.method;
 
+import jayield.lite.codegen.wrappers.AbstractAdvance;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
 import java.util.Iterator;
 
+import static jayield.lite.codegen.GeneratorUtils.classNameToPath;
 import static jayield.lite.codegen.GeneratorUtils.getLoadCode;
 import static jayield.lite.codegen.visitors.Constants.INT_ARRAY_DESCRIPTION;
 
@@ -14,6 +16,7 @@ public class ConstructorVisitor extends ChangeOwnersMethodVisitor implements Opc
     public static final String INIT_METHOD_NAME = "<init>";
     public static final String STATE_FIELD_NAME = "$state";
     public static final String YIELD_VARIABLE_NAME = "yield";
+    public static final String TRAVERSABLE_TYPE = "Ljayield/lite/Traversable";
 
     private final String stateFieldName;
 
@@ -66,7 +69,7 @@ public class ConstructorVisitor extends ChangeOwnersMethodVisitor implements Opc
 
     private static void callSuper(MethodVisitor mv) {
         mv.visitVarInsn(ALOAD, 0);
-        mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", INIT_METHOD_NAME, "()V", false);
+        mv.visitMethodInsn(INVOKESPECIAL, classNameToPath(AbstractAdvance.class), INIT_METHOD_NAME, "()V", false);
     }
 
     public static String extractConstructorParameters(String desc) {
@@ -77,14 +80,42 @@ public class ConstructorVisitor extends ChangeOwnersMethodVisitor implements Opc
         Iterator<LocalVariable> iterator = localVariables.iterator();
         int parameterIndex = 1;
         LocalVariable var;
+//        initialize(mv, owner);
         while (iterator.hasNext()) {
             var = iterator.next();
             if(!var.getName().equals(YIELD_VARIABLE_NAME)){
-                initializeField(mv, var, parameterIndex++, owner);
+                if(var.getDesc().equals(TRAVERSABLE_TYPE + ';')){
+                    LocalVariable variable = new LocalVariable(var.getName(), var.getDesc(), TRAVERSABLE_TYPE + "<TT;>;", var.getStart(), var.getEnd(), var.getIndex());
+                    initializeField(mv, variable, parameterIndex, owner);
+                    initializeIterator(mv, variable, parameterIndex++, owner);
+                } else {
+                    initializeField(mv, var, parameterIndex++, owner);
+                }
             } else {
                 return;
             }
         }
+    }
+
+    private static void initialize(MethodVisitor mv, String owner) {
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitTypeInsn(NEW, "jayield/lite/boxes/BoolBox");
+        mv.visitInsn(DUP);
+        mv.visitMethodInsn(INVOKESPECIAL, "jayield/lite/boxes/BoolBox", INIT_METHOD_NAME, "()V", false);
+        mv.visitFieldInsn(PUTFIELD, owner, "hasElement", "Ljayield/lite/boxes/BoolBox;");
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitInsn(ICONST_0);
+        mv.visitFieldInsn(PUTFIELD, owner, "validValue", "Z");
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitInsn(ICONST_1);
+        mv.visitFieldInsn(PUTFIELD, owner, "firstFailed", "Z");
+    }
+
+    private static void initializeIterator(MethodVisitor mv, LocalVariable localVariable, int parameterIndex, String owner) {
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitVarInsn(getLoadCode(localVariable.getDesc()), parameterIndex);
+        mv.visitMethodInsn(INVOKEINTERFACE, "jayield/lite/Traversable", "iterator", "()Ljava/util/Iterator;", true);
+        mv.visitFieldInsn(PUTFIELD, owner, "iterator", "Ljava/util/Iterator;");
     }
 
     private static void initializeField(MethodVisitor mv, LocalVariable localVariable, int parameterIndex, String owner) {

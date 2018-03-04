@@ -6,20 +6,25 @@ import org.objectweb.asm.*;
 
 import java.io.IOException;
 import java.lang.invoke.SerializedLambda;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class LocalVariableExtractorClassVisitor extends ClassVisitor implements Opcodes {
 
     private final String finalName;
-    private LocalVariableExtractorMethodVisitor mv;
+    private final List<String> ramifications;
+    private Map<String, LocalVariableExtractorMethodVisitor> mvMap;
 
-    public LocalVariableExtractorClassVisitor(ClassVisitor cv, String finalName) {
+    public LocalVariableExtractorClassVisitor(ClassVisitor cv, String finalName, List<String> ramifications) {
         super(ASM6, cv);
         this.finalName = finalName;
+        this.ramifications = ramifications;
+        mvMap = new HashMap<>();
     }
 
-    public Map<Integer, LocalVariable> getLocalVariables() {
-        return this.mv.getLocalVariables();
+    public Map<Integer, LocalVariable> getLocalVariables(String name) {
+        return this.mvMap.get(name).getLocalVariables();
     }
 
     @Override
@@ -29,21 +34,25 @@ public class LocalVariableExtractorClassVisitor extends ClassVisitor implements 
 
     @Override
     public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-        if (!name.equals(finalName)) {
+        if (!name.equals(finalName) && !ramifications.contains(name)) {
             return null;
         }
-        this.mv = new LocalVariableExtractorMethodVisitor(super.visitMethod(access, name, desc, signature, exceptions));
-        return this.mv;
+        LocalVariableExtractorMethodVisitor mv = new LocalVariableExtractorMethodVisitor(super.visitMethod(access, name, desc, signature, exceptions));
+        this.mvMap.put(name, mv);
+        return mv;
     }
 
-    public static  Map<Integer, LocalVariable> getLocalVariables(SerializedLambda traversable) {
+    public static  Map<String, Map<Integer, LocalVariable>> getLocalVariables(SerializedLambda traversable, List<String> ramifications) {
         try {
             ClassReader reader = new ClassReader(traversable.getImplClass());
             ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-            LocalVariableExtractorClassVisitor visitor = new LocalVariableExtractorClassVisitor(writer, traversable.getImplMethodName());
+            LocalVariableExtractorClassVisitor visitor = new LocalVariableExtractorClassVisitor(writer, traversable.getImplMethodName(), ramifications);
             reader.accept(visitor, 0);
 
-            return visitor.getLocalVariables();
+            HashMap<String, Map<Integer, LocalVariable>> localVariablesMap = new HashMap<>();
+            localVariablesMap.put(traversable.getImplMethodName(), visitor.getLocalVariables(traversable.getImplMethodName()));
+            ramifications.forEach(ramification -> localVariablesMap.put(ramification, visitor.getLocalVariables(ramification)));
+            return localVariablesMap;
         } catch (IOException e) {
             e.printStackTrace();
             return null;

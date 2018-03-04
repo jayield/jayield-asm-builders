@@ -1,11 +1,8 @@
 package jayield.lite.codegen.visitors.clazz;
 
-import jayield.lite.codegen.visitors.method.AdvancerMethodVisitor;
-import jayield.lite.codegen.visitors.method.ChangeOwnersMethodVisitor;
 import jayield.lite.codegen.visitors.method.RamificationsMethodVisitor;
 import org.objectweb.asm.*;
 
-import java.awt.*;
 import java.io.IOException;
 import java.lang.invoke.SerializedLambda;
 import java.util.*;

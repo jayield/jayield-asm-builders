@@ -9,9 +9,6 @@ import java.util.List;
 
 public class GeneratorTests {
 
-    private static int[] state = {0};
-
-
     @Test
     public void testSimpleGenerator() {
         List<Integer> actual = new ArrayList<>();
@@ -21,7 +18,7 @@ public class GeneratorTests {
 
         Traversable<Integer> traversable = Traversable.<Integer>empty()
                 .traverseWith(source -> yield -> {
-                    String template = "Executing for %d";
+                    String template = "%d";
                     System.out.println(String.format(template, n[0]));
                     yield.ret(n[0]++);
                     System.out.println(String.format(template, n[0]));
@@ -33,13 +30,13 @@ public class GeneratorTests {
                 });
 
 
-        System.out.println("Executing");
         Advancer<Integer> advancer = traversable.advancer();
+        System.out.println("Executing");
         while (advancer.tryAdvance(actual::add)) {
             System.out.println("Executed");
             step++;
             Assert.assertEquals(step, actual.size());
-            if (step < 3)
+            if (step < expected.size())
                 System.out.println("Executing");
         }
         Assert.assertEquals(expected.size(), actual.size());

@@ -4,8 +4,6 @@ import org.objectweb.asm.Opcodes;
 
 public class GeneratorUtils implements Opcodes{
 
-    private static final int ARRAY_TYPE_INCREMENT = 25;
-
     public static String classNameToPath(Class<?> clazz) {
         return clazz.getName().replace('.', '/');
     }

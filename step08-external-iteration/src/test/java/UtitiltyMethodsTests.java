@@ -8,7 +8,7 @@ import org.junit.Test;
 import java.util.*;
 import java.util.function.Function;
 
-@Ignore
+
 public class UtitiltyMethodsTests {
 
 
@@ -28,10 +28,16 @@ public class UtitiltyMethodsTests {
         List<Integer> expected = Arrays.asList(0, 2, 4, 6, 8);
         Integer[] input = new Integer[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
         int step = 0;
+        int[] state = new int[]{0};
 
         Traversable<Integer> series = Traversable.of(input).traverseWith(source -> (Traversable<Integer>) yield -> source.traverse(item -> {
-            if (item % 2 == 0) {
-                yield.ret(item);
+            if (state[0] == 0) {
+                if (item % 2 == 0) {
+                    yield.ret(item);
+                }
+                state[0]++;
+            } else {
+                state[0] = 0;
             }
         }));
 
@@ -54,11 +60,20 @@ public class UtitiltyMethodsTests {
         int times = 2;
         int step = 0;
 
+        int[] state = new int[]{0};
+
         Traversable<Integer> series = Traversable.of(input)
-                .traverseWith(source -> (Traversable<Integer>) yield -> source.traverse(item -> yield.ret(item * times)));
+                .traverseWith(source -> (Traversable<Integer>) yield -> source.traverse(item -> {
+                    if (state[0] == 0) {
+                        yield.ret(item * times);
+                        state[0]++;
+                    } else {
+                        state[0] = 0;
+                    }
+                }));
 
         final Advancer<Integer> advancer = series.advancer();
-        while (advancer.tryAdvance(actual::add)) {
+        while (advancer.tryAdvance(actual::add) && actual.size() < expected.size()) {
             step++;
             Assert.assertEquals(step, actual.size());
         }
@@ -95,11 +110,17 @@ public class UtitiltyMethodsTests {
         Integer[] input = new Integer[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
         final IntBox box = new IntBox(-1);
         int step = 0;
+        int[] state = new int[]{0};
 
         Traversable<Integer> series = Traversable.of(input)
                 .traverseWith(source -> (Traversable<Integer>) yield -> source.traverse(item -> {
-                    if (box.inc() >= threshold) {
-                        yield.ret(item);
+                    if (state[0] == 0) {
+                        if (box.inc() >= threshold) {
+                            yield.ret(item);
+                        }
+                        state[0]++;
+                    } else {
+                        state[0] = 0;
                     }
                 }));
 
@@ -122,12 +143,18 @@ public class UtitiltyMethodsTests {
         Integer[] input = new Integer[]{0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0};
         final HashSet<Integer> cache = new HashSet<>();
         int step = 0;
+        int[] state = new int[]{0};
 
         Traversable<Integer> series = Traversable.of(input)
                 .traverseWith(source -> (Traversable<Integer>) yield -> source.traverse(item -> {
-                    if (cache.add(item)) {
-                        yield.ret(item);
-                        return;
+                    if (state[0] == 0) {
+                        if (cache.add(item)) {
+                            yield.ret(item);
+                            return;
+                        }
+                        state[0]++;
+                    } else {
+                        state[0] = 0;
                     }
                 }));
 
@@ -143,18 +170,25 @@ public class UtitiltyMethodsTests {
         }
     }
 
-    @Ignore
     @Test
     public void testDup() {
         List<Integer> actual = new ArrayList<>();
         List<Integer> expected = Arrays.asList(0, 0, 1, 1, 2, 2, 3, 3);
         Integer[] input = new Integer[]{0, 1, 2, 3};
         int step = 0;
+        int[] state = new int[]{0};
 
         Traversable<Integer> series = Traversable.of(input)
                 .traverseWith(source -> (Traversable<Integer>) yield -> source.traverse(item -> {
-                    yield.ret(item);
-                    yield.ret(item);
+                    if (state[0] == 0) {
+                        yield.ret(item);
+                        state[0]++;
+                    }else if (state[0] == 1) {
+                        yield.ret(item);
+                        state[0]++;
+                    } else {
+                        state[0] = 0;
+                    }
                 }));
 
         final Advancer<Integer> advancer = series.advancer();
@@ -174,7 +208,7 @@ public class UtitiltyMethodsTests {
     public void testFlatmap() {
         List<Integer> actual = new ArrayList<>();
         List<Integer> expected = Arrays.asList(0, 1, 2, 3);
-        Integer[][] input = new Integer[][] {{0, 1}, {2, 3}};
+        Integer[][] input = new Integer[][]{{0, 1}, {2, 3}};
         int step = 0;
 
         Function<Integer[], Traversable<Integer>> mapper = Traversable::of;

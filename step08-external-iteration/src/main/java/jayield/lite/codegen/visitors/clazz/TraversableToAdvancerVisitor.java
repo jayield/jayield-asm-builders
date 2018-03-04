@@ -1,7 +1,7 @@
 package jayield.lite.codegen.visitors.clazz;
 
 import jayield.lite.codegen.LambdaToAdvancerMethodGenerator;
-import jayield.lite.codegen.visitors.method.AdvancerMethodVisitor;
+import jayield.lite.codegen.visitors.method.TraverseMethodVisitor;
 import jayield.lite.codegen.visitors.method.ChangeOwnersMethodVisitor;
 import jayield.lite.codegen.wrappers.LambdaToAdvancer;
 import org.objectweb.asm.ClassVisitor;
@@ -45,13 +45,13 @@ public class TraversableToAdvancerVisitor extends ClassVisitor implements Opcode
                     super.visitMethod(access, name, desc, signature, exceptions),
                     sourceName,
                     finalName);
-        return new AdvancerMethodVisitor(super.visitMethod(ACC_PUBLIC + ACC_STATIC,
+        return new TraverseMethodVisitor(super.visitMethod(ACC_PUBLIC + ACC_STATIC,
                 name,
                 desc.replace(";)V", ";)Z"),
                 signature,
                 exceptions),
                 sourceName,
-                finalName);
+                finalName, null);
     }
 
 }

@@ -3,7 +3,6 @@ package jayield.lite.codegen;
 import jayield.lite.Advancer;
 import jayield.lite.Traversable;
 import jayield.lite.codegen.visitors.clazz.AdvancerFromTraversable;
-import jayield.lite.codegen.wrappers.AdvancerWrapper;
 import jayield.lite.codegen.wrappers.LambdaToAdvancer;
 import jdk.internal.org.objectweb.asm.util.ASMifier;
 import loaders.ByteArrayClassLoader;
@@ -23,11 +22,11 @@ public class AdvancerGenerator {
         SerializedLambda lambda = getSerializedLambdaFromTraversable(source);
         String advancerFileName = getGeneratedFilename(lambda, getOutputPath());
         byte[] bytecode = generateAdvancerClassByteCode(lambda);
-//        printASM(getOutputPath() + AdvancerGenerator.class.getName().replace('.','/') + ".class");
-//        writeClassToFile(advancerFileName, bytecode);
+//        printASM(getOutputPath() + AbstractAdvance.class.getName().replace('.','/') + ".class");
+        writeClassToFile(advancerFileName, bytecode);
 //        printASM(getOutputPath() + lambda.getImplMethodName() + ".class");
         Class<?> generatedClass = loadGeneratedClass(lambda, bytecode);
-        return new AdvancerWrapper<>(getAdvancer(generatedClass, lambda));
+        return getAdvancer(generatedClass, lambda);
     }
 
     @SuppressWarnings("unchecked")

@@ -1,6 +1,5 @@
 package jayield.lite.codegen.visitors.method;
 
-import jayield.lite.Yield;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
@@ -8,41 +7,33 @@ import org.objectweb.asm.MethodVisitor;
 import java.util.Iterator;
 import java.util.Map;
 
-import static jayield.lite.codegen.GeneratorUtils.classNameToPath;
 import static jayield.lite.codegen.visitors.Constants.INT_ARRAY_DESCRIPTION;
+import static jayield.lite.codegen.visitors.method.ConstructorVisitor.STATE_FIELD_NAME;
 import static jayield.lite.codegen.visitors.method.ConstructorVisitor.YIELD_VARIABLE_NAME;
 
-public class TryAdvanceStateMachineMethodVisitor extends AdvancerMethodVisitor {
-
-    private static final String YIELD_METHOD_NAME = "ret";
-    private static final String YIELD_METHOD_DESCRIPTION = "(Ljava/lang/Object;)V";
+public class StateMachineMethodVisitor extends TraverseMethodVisitor {
 
     private final ClassVisitor cv;
     private final String stateFieldName;
-    private final Map<Integer, LocalVariable> localVariables;
-    private int yieldIndex;
     private int state = 0;
     private Label nextLabel;
 
-    private Label startLabel;
-    private Label endLabel;
 
 
-    public TryAdvanceStateMachineMethodVisitor(MethodVisitor methodVisitor,
-                                               ClassVisitor cv,
-                                               String originalName,
-                                               String newName,
-                                               String stateFieldName,
-                                               Map<Integer, LocalVariable> localVariables) {
-        super(methodVisitor, originalName, newName);
+    public StateMachineMethodVisitor(MethodVisitor methodVisitor,
+                                     ClassVisitor cv,
+                                     String originalName,
+                                     String newName,
+                                     String stateFieldName,
+                                     Map<Integer, LocalVariable> localVariables) {
+        super(methodVisitor, originalName, newName, localVariables);
         this.cv = cv;
         this.stateFieldName = stateFieldName;
-        this.localVariables = localVariables;
 
         Iterator<LocalVariable> iterator = localVariables.values().iterator();
-        while(iterator.hasNext()){
+        while (iterator.hasNext()) {
             LocalVariable current = iterator.next();
-            if(current.getName().equals(YIELD_VARIABLE_NAME)) {
+            if (current.getName().equals(YIELD_VARIABLE_NAME)) {
                 this.yieldIndex = current.getIndex();
                 break;
             }
@@ -55,7 +46,32 @@ public class TryAdvanceStateMachineMethodVisitor extends AdvancerMethodVisitor {
         super.visitCode();
         nextLabel = new Label();
         startLabel = nextLabel;
+        setUp();
         startState(nextLabel);
+    }
+
+    private void setUp() {
+        // reset boolbox
+        super.visitVarInsn(ALOAD, 0);
+        super.visitFieldInsn(GETFIELD, newOwner, "hasElement", "Ljayield/lite/boxes/BoolBox;");
+        super.visitMethodInsn(INVOKEVIRTUAL, "jayield/lite/boxes/BoolBox", "reset", "()V", false);
+
+        // instantiate wrapper
+        super.visitTypeInsn(NEW, "jayield/lite/codegen/wrappers/YieldWrapper");
+        super.visitInsn(DUP);
+        super.visitVarInsn(ALOAD, getVarMapping(yieldIndex));
+        super.visitVarInsn(ALOAD, 0);
+        super.visitFieldInsn(GETFIELD, newOwner, "hasElement", "Ljayield/lite/boxes/BoolBox;");
+        super.visitMethodInsn(INVOKESPECIAL, "jayield/lite/codegen/wrappers/YieldWrapper", "<init>", "(Ljayield/lite/Yield;Ljayield/lite/boxes/BoolBox;)V", false);
+        super.visitVarInsn(ASTORE, getWrapperIndex());
+        /*super.visitFieldInsn(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;");
+        super.visitVarInsn(ALOAD, 0);
+        super.visitFieldInsn(GETFIELD, newOwner, STATE_FIELD_NAME, "[I");
+        super.visitInsn(ICONST_0);
+        super.visitInsn(IALOAD);
+        super.visitMethodInsn(INVOKEVIRTUAL, "java/io/PrintStream", "println", "(I)V", false);*/
+
+
     }
 
     @Override
@@ -83,7 +99,12 @@ public class TryAdvanceStateMachineMethodVisitor extends AdvancerMethodVisitor {
             super.visitVarInsn(opcode - 33, actualVar);
             super.visitFieldInsn(PUTFIELD, newOwner, localVariable.getName(), localVariable.getDesc());
         } else {
-            super.visitVarInsn(opcode, actualVar);
+            if (var == yieldIndex) {
+                super.visitVarInsn(opcode, getWrapperIndex());
+            } else {
+                super.visitVarInsn(opcode, actualVar);
+            }
+
         }
     }
 
@@ -91,7 +112,7 @@ public class TryAdvanceStateMachineMethodVisitor extends AdvancerMethodVisitor {
     public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
         super.visitMethodInsn(opcode, owner, name, desc, itf);
         if (isYield(opcode, owner, name, desc, itf)) {
-            finishState();
+            finishState(false);
             nextLabel = new Label();
             startState(nextLabel);
         }
@@ -101,11 +122,10 @@ public class TryAdvanceStateMachineMethodVisitor extends AdvancerMethodVisitor {
     public void visitInsn(int opcode) {
         if (opcode == RETURN) {
             // return false
-            finishState();
-            super.visitInsn(ICONST_0);
-            super.visitInsn(IRETURN);
+//            super.visitLabel(nextLabel);
+            finishState(true);
             this.endLabel = this.nextLabel;
-            super.visitLocalVariable("this", "L" + newOwner+ ";", null, startLabel, endLabel, 0);
+            super.visitLocalVariable("this", "L" + newOwner + ";", null, startLabel, endLabel, 0);
         }
         super.visitInsn(opcode);
     }
@@ -115,7 +135,7 @@ public class TryAdvanceStateMachineMethodVisitor extends AdvancerMethodVisitor {
         super.visitLocalVariable(name, desc, signature, startLabel, endLabel, getVarMapping(index));
     }
 
-    private void finishState() {
+    private void finishState(boolean last) {
         // Increment current state
         super.visitVarInsn(ALOAD, 0);
         super.visitFieldInsn(GETFIELD, newOwner, stateFieldName, INT_ARRAY_DESCRIPTION);
@@ -126,9 +146,9 @@ public class TryAdvanceStateMachineMethodVisitor extends AdvancerMethodVisitor {
         super.visitInsn(IADD);
         super.visitInsn(IASTORE);
 
-        // Return true, element was found
-        super.visitInsn(ICONST_1);
-        super.visitInsn(IRETURN);
+
+        // Return element was found
+        returnElementFound();
 
         // set State End Label
         super.visitLabel(nextLabel);
@@ -148,62 +168,9 @@ public class TryAdvanceStateMachineMethodVisitor extends AdvancerMethodVisitor {
         super.visitJumpInsn(IFNE, nextStateLabel);
     }
 
-    private boolean isYield(int opcode, String owner, String name, String desc, boolean isInterface) {
-        return opcode == INVOKEINTERFACE &&
-                owner.equals(classNameToPath(Yield.class)) &&
-                name.equals(YIELD_METHOD_NAME) &&
-                desc.equals(YIELD_METHOD_DESCRIPTION) &&
-                isInterface;
-    }
-
-    private boolean isLoadOpcode(int opcode) {
-        switch (opcode) {
-            case ALOAD:
-            case FLOAD:
-            case LLOAD:
-            case ILOAD:
-            case AALOAD:
-            case BALOAD:
-            case CALOAD:
-            case DALOAD:
-            case DLOAD:
-            case FALOAD:
-            case IALOAD:
-            case LALOAD:
-            case SALOAD:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private boolean isStoreOpcode(int opcode) {
-        switch (opcode) {
-            case ASTORE:
-            case FSTORE:
-            case LSTORE:
-            case ISTORE:
-            case AASTORE:
-            case BASTORE:
-            case CASTORE:
-            case DASTORE:
-            case DSTORE:
-            case FASTORE:
-            case IASTORE:
-            case LASTORE:
-            case SASTORE:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private int getVarMapping(int var) {
-        if(var != yieldIndex){
-            return yieldIndex + var + 1;
-        } else {
-            return 1;
-        }
-
+    @Override
+    public void visitMaxs(int maxStack, int maxLocals) {
+        super.visitLocalVariable("wrapper", "Ljayield/lite/Yield;", "Ljayield/lite/Yield<TT;>;", startLabel, endLabel, getWrapperIndex());
+        super.visitMaxs(maxStack + 1, maxLocals + 1);
     }
 }
