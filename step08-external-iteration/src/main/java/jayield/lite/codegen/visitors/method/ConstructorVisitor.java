@@ -5,7 +5,9 @@ import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 import static jayield.lite.codegen.GeneratorUtils.classNameToPath;
 import static jayield.lite.codegen.GeneratorUtils.getLoadCode;
@@ -28,9 +30,14 @@ public class ConstructorVisitor extends ChangeOwnersMethodVisitor implements Opc
     @Override
     public void visitInsn(int opcode) {
         if (opcode == RETURN) {
-            initializeState(this, newOwner, stateFieldName);
+            initializeState(this, newOwner, stateFieldName, new ArrayList<>());
         }
         super.visitInsn(opcode);
+    }
+
+    private static void initializeState(MethodVisitor mv, String owner, String fieldName, List<String> ramifications) {
+        initializeState(mv, owner, fieldName);
+        ramifications.forEach(ramification -> initializeState(mv, owner, fieldName + ramification));
     }
 
     private static void initializeState(MethodVisitor mv, String owner, String fieldName) {
@@ -44,7 +51,7 @@ public class ConstructorVisitor extends ChangeOwnersMethodVisitor implements Opc
         mv.visitFieldInsn(PUTFIELD, owner, fieldName, INT_ARRAY_DESCRIPTION);
     }
 
-    public static MethodVisitor generateConstructor(ClassVisitor visitor, Iterable<LocalVariable> localVariables, String desc, String owner) {
+    public static MethodVisitor generateConstructor(ClassVisitor visitor, Iterable<LocalVariable> localVariables, String desc, String owner, List<String> ramifications) {
         MethodVisitor emptyConstructor = visitor.visitMethod(ACC_PUBLIC,
                 INIT_METHOD_NAME + owner,
                 "()V",
@@ -61,7 +68,7 @@ public class ConstructorVisitor extends ChangeOwnersMethodVisitor implements Opc
                 null);
         callSuper(constructor);
         initializeFields(constructor, localVariables, owner);
-        initializeState(constructor, owner, STATE_FIELD_NAME);
+        initializeState(constructor, owner, STATE_FIELD_NAME, ramifications);
         constructor.visitInsn(RETURN);
         constructor.visitMaxs(2, 3);
         return constructor;

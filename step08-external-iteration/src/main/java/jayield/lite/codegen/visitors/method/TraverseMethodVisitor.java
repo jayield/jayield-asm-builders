@@ -6,6 +6,7 @@ import org.objectweb.asm.*;
 import java.util.Map;
 
 import static jayield.lite.codegen.GeneratorUtils.classNameToPath;
+import static jayield.lite.codegen.GeneratorUtils.getNewLambdaDesc;
 
 public class TraverseMethodVisitor extends ChangeOwnersMethodVisitor implements Opcodes {
 
@@ -81,11 +82,36 @@ public class TraverseMethodVisitor extends ChangeOwnersMethodVisitor implements 
 
     @Override
     public void visitInvokeDynamicInsn(String name, String desc, Handle bsm, Object... bsmArgs) {
-        super.visitInvokeDynamicInsn(name, desc, bsm, bsmArgs);
         if (YIELD_METHOD_NAME.equals(name)) {
+            int index = getHandleIndex(bsmArgs);
+            if(index != -1) {
+                Handle lambda = (Handle) bsmArgs[index];
+                Handle newHandle = new Handle(lambda.getTag(),
+                        lambda.getOwner(),
+                        lambda.getName(),
+                        getNewLambdaDesc(lambda.getDesc()),
+                        lambda.isInterface());
+                bsmArgs[index] = newHandle;
+                super.visitVarInsn(ALOAD, 0);
+                super.visitFieldInsn(GETFIELD, newOwner, String.format("$state%s", lambda.getName()), "[I");
+                super.visitInvokeDynamicInsn(name, desc.replace(")", "[I)"), bsm, bsmArgs);
+            } else {
+                super.visitInvokeDynamicInsn(name, desc, bsm, bsmArgs);
+            }
             super.visitVarInsn(ASTORE, getAuxIndex());
+        } else {
+            super.visitInvokeDynamicInsn(name, desc, bsm, bsmArgs);
         }
     }
+
+    private int getHandleIndex(Object[] bsmArgs) {
+        for (int i = 0; i < bsmArgs.length; i++) {
+            if(bsmArgs[i] instanceof Handle)
+                return i;
+        }
+        return -1;
+    }
+
     @Override
     public void visitMaxs(int maxStack, int maxLocals) {
         super.visitLocalVariable("aux", "Ljayield/lite/Yield;", "Ljayield/lite/Yield<TT;>;", startLabel, endLabel, getAuxIndex());

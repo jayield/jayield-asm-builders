@@ -2,10 +2,7 @@ package jayield.lite.codegen.visitors.clazz;
 
 import jayield.lite.Advancer;
 import jayield.lite.codegen.LambdaToAdvancerMethodGenerator;
-import jayield.lite.codegen.visitors.method.ChangeOwnersMethodVisitor;
-import jayield.lite.codegen.visitors.method.ConstructorVisitor;
-import jayield.lite.codegen.visitors.method.LocalVariable;
-import jayield.lite.codegen.visitors.method.StateMachineMethodVisitor;
+import jayield.lite.codegen.visitors.method.*;
 import jayield.lite.codegen.wrappers.AbstractAdvance;
 import jayield.lite.codegen.wrappers.LambdaToAdvancer;
 import org.objectweb.asm.*;
@@ -16,12 +13,16 @@ import java.util.List;
 import java.util.Map;
 
 import static jayield.lite.codegen.GeneratorUtils.classNameToPath;
+import static jayield.lite.codegen.GeneratorUtils.getNewLambdaDesc;
 import static jayield.lite.codegen.visitors.method.ConstructorVisitor.*;
 
 public class AdvancerFromTraversable extends ClassVisitor implements Opcodes {
 
     public static final String TRY_ADVANCE_METHOD_NAME = "tryAdvance";
-    public static final String TRY_ADVANCE_METHOD_SIGNATURE = "(Ljayield/lite/Yield;)Z";
+    public static final String TRY_ADVANCE_METHOD_DESC = "(Ljayield/lite/Yield;)Z";
+    public static final String TRY_ADVANCE_METHOD_SIGNATURE = "<T:Ljava/lang/Object;>(Ljayield/lite/Yield<TT;>;)Z";
+    public static final String YIELD_SIGNATURE = "<T:Ljava/lang/Object;>(TT;)V";
+    public static final String YIELD_DESC = "(Ljava/lang/Object;)V";
 
     private final ClassWriter visitor;
     private final SerializedLambda traversable;
@@ -66,6 +67,7 @@ public class AdvancerFromTraversable extends ClassVisitor implements Opcodes {
             }
         }
         super.visitField(ACC_PRIVATE, STATE_FIELD_NAME, "[I", null, null).visitEnd();
+        ramifications.forEach(ramification -> super.visitField(ACC_PRIVATE, STATE_FIELD_NAME + ramification, "[I", null, null).visitEnd());
     }
 
     @Override
@@ -82,13 +84,24 @@ public class AdvancerFromTraversable extends ClassVisitor implements Opcodes {
                     this.traversable.getCapturingClass(),
                     this.targetName);
         } else if (shouldInstrument(name)) {
-            return new ChangeOwnersMethodVisitor(super.visitMethod(access, name, desc, signature, exceptions),
-                    this.traversable.getCapturingClass(),
-                    this.targetName);
+            return new YieldStateMachineMethodVisitor(
+                    super.visitMethod(access,
+                            name,
+                            getNewLambdaDesc(desc),
+                            signature,
+                            exceptions),
+                    sourceName,
+                    targetName,
+                    STATE_FIELD_NAME + name,
+                    this.localVariables.get(name));
         } else if (this.targetName.equals(name)) {
-            ConstructorVisitor.generateConstructor(this, localVariables.get(name).values(), desc, targetName);
+            ConstructorVisitor.generateConstructor(this, localVariables.get(name).values(), desc, targetName, ramifications);
             return new StateMachineMethodVisitor(
-                    super.visitMethod(ACC_PUBLIC, TRY_ADVANCE_METHOD_NAME, TRY_ADVANCE_METHOD_SIGNATURE, signature, exceptions),
+                    super.visitMethod(ACC_PUBLIC,
+                            TRY_ADVANCE_METHOD_NAME,
+                            TRY_ADVANCE_METHOD_DESC,
+                            signature,
+                            exceptions),
                     this,
                     sourceName,
                     targetName,

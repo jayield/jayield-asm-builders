@@ -28,7 +28,6 @@ public abstract class AbstractAdvance<T> implements Advancer<T> {
         if(current == null && iterator.hasNext()){
             current = iterator.next();
             this.validValue = true;
-            System.out.println(current);
         }
         yield.ret(current);
         if(hasElement.isFalse() && firstFailed){
@@ -38,7 +37,6 @@ public abstract class AbstractAdvance<T> implements Advancer<T> {
             }else {
                 this.validValue = false;
             }
-            System.out.println(current);
         } else {
             firstFailed = true;
             this.validValue = hasElement.isTrue();
