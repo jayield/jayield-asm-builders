@@ -195,4 +195,60 @@ public class UtitiltyMethodsTests {
         }
     }
 
+
+    @Test
+    public void testDupOnes() {
+        List<Integer> actual = new ArrayList<>();
+        List<Integer> expected = Arrays.asList(1, 1);
+        Integer[] input = new Integer[]{0, 1, 2};
+        int step = 0;
+
+        Traversable<Integer> series = Traversable.of(input)
+                .traverseWith(source -> yield -> source.traverse(item -> {
+                    if(item == 1) {
+                        yield.ret(item);
+                        yield.ret(item);
+                    }
+                }));
+
+        final Advancer<Integer> advancer = series.advancer();
+        while (advancer.tryAdvance(actual::add)) {
+            step++;
+            Assert.assertEquals(step, actual.size());
+        }
+
+        Assert.assertEquals(expected.size(), actual.size());
+        for (int i = 0; i < actual.size(); i++) {
+            Assert.assertEquals(expected.get(i), actual.get(i));
+        }
+    }
+
+    @Test
+    public void testDupWithExternalState() {
+        List<Integer> actual = new ArrayList<>();
+        List<Integer> expected = Arrays.asList(1, 1);
+        Integer[] input = new Integer[]{0, 1, 2};
+        int step = 0;
+        IntBox box = new IntBox();
+
+        Traversable<Integer> series = Traversable.of(input)
+                .traverseWith(source -> yield -> source.traverse(item -> {
+                    if(box.inc() == 1) {
+                        yield.ret(item);
+                        yield.ret(item);
+                    }
+                }));
+
+        final Advancer<Integer> advancer = series.advancer();
+        while (advancer.tryAdvance(actual::add)) {
+            step++;
+            Assert.assertEquals(step, actual.size());
+        }
+
+        Assert.assertEquals(expected.size(), actual.size());
+        for (int i = 0; i < actual.size(); i++) {
+            Assert.assertEquals(expected.get(i), actual.get(i));
+        }
+    }
+
 }
