@@ -84,17 +84,16 @@ public class TraverseMethodVisitor extends ChangeOwnersMethodVisitor implements 
     public void visitInvokeDynamicInsn(String name, String desc, Handle bsm, Object... bsmArgs) {
         if (YIELD_METHOD_NAME.equals(name)) {
             int index = getHandleIndex(bsmArgs);
-            if(index != -1) {
+            if (index != -1) {
                 Handle lambda = (Handle) bsmArgs[index];
                 Handle newHandle = new Handle(lambda.getTag(),
                         lambda.getOwner(),
                         lambda.getName(),
-                        getNewLambdaDesc(lambda.getDesc()),
+                        getNewLambdaDesc(lambda.getDesc(), newOwner),
                         lambda.isInterface());
                 bsmArgs[index] = newHandle;
                 super.visitVarInsn(ALOAD, 0);
-                super.visitFieldInsn(GETFIELD, newOwner, String.format("$state%s", lambda.getName()), "[I");
-                super.visitInvokeDynamicInsn(name, desc.replace(")", "[I)"), bsm, bsmArgs);
+                super.visitInvokeDynamicInsn(name, desc.replace(")", String.format("L%s;)", newOwner)), bsm, bsmArgs);
             } else {
                 super.visitInvokeDynamicInsn(name, desc, bsm, bsmArgs);
             }
@@ -106,7 +105,7 @@ public class TraverseMethodVisitor extends ChangeOwnersMethodVisitor implements 
 
     private int getHandleIndex(Object[] bsmArgs) {
         for (int i = 0; i < bsmArgs.length; i++) {
-            if(bsmArgs[i] instanceof Handle)
+            if (bsmArgs[i] instanceof Handle)
                 return i;
         }
         return -1;

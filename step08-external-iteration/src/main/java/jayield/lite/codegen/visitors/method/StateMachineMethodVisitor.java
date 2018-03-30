@@ -121,8 +121,6 @@ public class StateMachineMethodVisitor extends TraverseMethodVisitor {
     @Override
     public void visitInsn(int opcode) {
         if (opcode == RETURN) {
-            // return false
-//            super.visitLabel(nextLabel);
             finishState(true);
             this.endLabel = this.nextLabel;
             super.visitLocalVariable("this", "L" + newOwner + ";", null, startLabel, endLabel, 0);
@@ -140,11 +138,16 @@ public class StateMachineMethodVisitor extends TraverseMethodVisitor {
         super.visitVarInsn(ALOAD, 0);
         super.visitFieldInsn(GETFIELD, newOwner, stateFieldName, INT_ARRAY_DESCRIPTION);
         super.visitInsn(ICONST_0);
-        super.visitInsn(DUP2);
-        super.visitInsn(IALOAD);
-        super.visitInsn(ICONST_1);
-        super.visitInsn(IADD);
-        super.visitInsn(IASTORE);
+        if(!last){
+            super.visitInsn(DUP2);
+            super.visitInsn(IALOAD);
+            super.visitInsn(ICONST_1);
+            super.visitInsn(IADD);
+            super.visitInsn(IASTORE);
+        } else {
+            super.visitInsn(DUP);
+            super.visitInsn(IASTORE);
+        }
 
 
         // Return element was found

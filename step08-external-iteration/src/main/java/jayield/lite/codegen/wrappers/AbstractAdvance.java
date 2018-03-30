@@ -25,21 +25,19 @@ public abstract class AbstractAdvance<T> implements Advancer<T> {
     }
 
     protected void advance(Yield<T> yield) {
-        if(current == null && iterator.hasNext()){
+        if (!validValue && iterator.hasNext()) {
             current = iterator.next();
-            this.validValue = true;
+            validValue = true;
         }
         yield.ret(current);
-        if(hasElement.isFalse() && firstFailed){
-            firstFailed = false;
-            if(iterator.hasNext()){
-                current = iterator.next();
-            }else {
-                this.validValue = false;
-            }
-        } else {
-            firstFailed = true;
-            this.validValue = hasElement.isTrue();
-        }
+//        debugState();
+    }
+
+    private void debugState() {
+        System.out.println(String.format("current: %o", current));
+        System.out.println(String.format("hasElement: %b", this.hasElement.isTrue()));
+        System.out.println(String.format("has next: %b", this.iterator.hasNext()));
+        System.out.println(String.format("valid Value: %b", this.validValue));
+        System.out.println();
     }
 }

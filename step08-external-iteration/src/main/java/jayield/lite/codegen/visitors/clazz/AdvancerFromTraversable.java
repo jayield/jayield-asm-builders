@@ -72,7 +72,7 @@ public class AdvancerFromTraversable extends ClassVisitor implements Opcodes {
 
     @Override
     public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
-        return null;
+        return super.visitField(access, name, desc, signature, value);
     }
 
     @Override
@@ -84,10 +84,10 @@ public class AdvancerFromTraversable extends ClassVisitor implements Opcodes {
                     this.traversable.getCapturingClass(),
                     this.targetName);
         } else if (shouldInstrument(name)) {
-            return new YieldStateMachineMethodVisitor(
+            return new YieldStateMachineMethodVisitor(this,
                     super.visitMethod(access,
                             name,
-                            getNewLambdaDesc(desc),
+                            getNewLambdaDesc(desc, targetName),
                             signature,
                             exceptions),
                     sourceName,

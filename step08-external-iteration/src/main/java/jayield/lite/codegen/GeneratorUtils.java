@@ -30,9 +30,9 @@ public class GeneratorUtils implements Opcodes{
     }
 
 
-    public static String getNewLambdaDesc(String desc) {
+    public static String getNewLambdaDesc(String desc, String type) {
         int lastTypeStart = getLastTypeStart(desc);
-        return desc.substring(0 , lastTypeStart) + "[I" + desc.substring(lastTypeStart);
+        return desc.substring(0 , lastTypeStart) + String.format("L%s;", type) + desc.substring(lastTypeStart);
     }
 
     public static int getLastTypeStart(String desc) {

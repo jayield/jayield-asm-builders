@@ -31,10 +31,10 @@ public class UtitiltyMethodsTests {
 
         Traversable<Integer> series = Traversable.of(input)
                 .traverseWith(source -> yield -> source.traverse(item -> {
-            if (item % 2 == 0) {
-                yield.ret(item);
-            }
-        }));
+                    if (item % 2 == 0) {
+                        yield.ret(item);
+                    }
+                }));
 
         final Advancer<Integer> advancer = series.advancer();
         while (advancer.tryAdvance(actual::add)) {
@@ -93,9 +93,9 @@ public class UtitiltyMethodsTests {
     @Test
     public void testSkip() {
         List<Integer> actual = new ArrayList<>();
-        int threshold = 8;
-        List<Integer> expected = Arrays.asList(8, 9);
-        Integer[] input = new Integer[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+        int threshold = 2;
+        List<Integer> expected = Arrays.asList(2, 3);
+        Integer[] input = new Integer[]{0, 1, 2, 3};
         final IntBox box = new IntBox(-1);
         int step = 0;
 
@@ -169,6 +169,59 @@ public class UtitiltyMethodsTests {
         }
     }
 
+    @Test
+    public void testTripple() {
+        List<Integer> actual = new ArrayList<>();
+        List<Integer> expected = Arrays.asList(0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3);
+        Integer[] input = new Integer[]{0, 1, 2, 3};
+        int step = 0;
+
+        Traversable<Integer> series = Traversable.of(input)
+                .traverseWith(source -> yield -> source.traverse(item -> {
+                    yield.ret(item);
+                    yield.ret(item);
+                    yield.ret(item);
+                }));
+
+        final Advancer<Integer> advancer = series.advancer();
+        while (advancer.tryAdvance(actual::add)) {
+            step++;
+            Assert.assertEquals(step, actual.size());
+        }
+
+        Assert.assertEquals(expected.size(), actual.size());
+        for (int i = 0; i < actual.size(); i++) {
+            Assert.assertEquals(expected.get(i), actual.get(i));
+        }
+    }
+
+    @Test
+    public void testTrippleWithFor() {
+        List<Integer> actual = new ArrayList<>();
+        List<Integer> expected = Arrays.asList(0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3);
+        Integer[] input = new Integer[]{0, 1, 2, 3};
+        int step = 0;
+
+        Traversable<Integer> series = Traversable.of(input)
+                .traverseWith(source -> yield -> source.traverse(item -> {
+                    for (int i = 0; i < 3; i++) {
+                        yield.ret(item);
+
+                    }
+                }));
+
+        final Advancer<Integer> advancer = series.advancer();
+        while (advancer.tryAdvance(actual::add)) {
+            step++;
+            Assert.assertEquals(step, actual.size());
+        }
+
+        Assert.assertEquals(expected.size(), actual.size());
+        for (int i = 0; i < actual.size(); i++) {
+            Assert.assertEquals(expected.get(i), actual.get(i));
+        }
+    }
+
     @Ignore
     @Test
     public void testFlatmap() {
@@ -205,7 +258,7 @@ public class UtitiltyMethodsTests {
 
         Traversable<Integer> series = Traversable.of(input)
                 .traverseWith(source -> yield -> source.traverse(item -> {
-                    if(item == 1) {
+                    if (item == 1) {
                         yield.ret(item);
                         yield.ret(item);
                     }
@@ -229,11 +282,11 @@ public class UtitiltyMethodsTests {
         List<Integer> expected = Arrays.asList(1, 1);
         Integer[] input = new Integer[]{0, 1, 2};
         int step = 0;
-        IntBox box = new IntBox();
+        IntBox box = new IntBox(-1);
 
         Traversable<Integer> series = Traversable.of(input)
                 .traverseWith(source -> yield -> source.traverse(item -> {
-                    if(box.inc() == 1) {
+                    if (box.inc() == 1) {
                         yield.ret(item);
                         yield.ret(item);
                     }
