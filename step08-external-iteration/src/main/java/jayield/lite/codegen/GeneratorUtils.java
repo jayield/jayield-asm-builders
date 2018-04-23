@@ -1,15 +1,19 @@
 package jayield.lite.codegen;
 
+import jdk.internal.org.objectweb.asm.Type;
 import org.objectweb.asm.Opcodes;
 
-public class GeneratorUtils implements Opcodes{
+import java.util.stream.Stream;
+
+public class GeneratorUtils implements Opcodes {
 
     public static String classNameToPath(Class<?> clazz) {
-        return clazz.getName().replace('.', '/');
+        return clazz.getName()
+                    .replace('.', '/');
     }
 
     public static int getLoadCode(String desc) {
-        switch (desc.charAt(0)){
+        switch (desc.charAt(0)) {
             case 'Z':
             case 'B':
             case 'C':
@@ -46,4 +50,49 @@ public class GeneratorUtils implements Opcodes{
         }
         return lastType;
     }
+
+    public static boolean isStoreOpcode(int opcode) {
+        switch (opcode) {
+            case ASTORE:
+            case FSTORE:
+            case LSTORE:
+            case ISTORE:
+            case AASTORE:
+            case BASTORE:
+            case CASTORE:
+            case DASTORE:
+            case DSTORE:
+            case FASTORE:
+            case IASTORE:
+            case LASTORE:
+            case SASTORE:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public static boolean isLoadOpcode(int opcode) {
+        switch (opcode) {
+            case ALOAD:
+            case FLOAD:
+            case LLOAD:
+            case ILOAD:
+            case AALOAD:
+            case BALOAD:
+            case CALOAD:
+            case DALOAD:
+            case DLOAD:
+            case FALOAD:
+            case IALOAD:
+            case LALOAD:
+            case SALOAD:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+
+
 }

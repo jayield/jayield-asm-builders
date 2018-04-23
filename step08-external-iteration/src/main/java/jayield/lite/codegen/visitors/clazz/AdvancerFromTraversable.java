@@ -8,6 +8,7 @@ import jayield.lite.codegen.wrappers.LambdaToAdvancer;
 import org.objectweb.asm.*;
 
 import java.lang.invoke.SerializedLambda;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -20,9 +21,6 @@ public class AdvancerFromTraversable extends ClassVisitor implements Opcodes {
 
     public static final String TRY_ADVANCE_METHOD_NAME = "tryAdvance";
     public static final String TRY_ADVANCE_METHOD_DESC = "(Ljayield/lite/Yield;)Z";
-    public static final String TRY_ADVANCE_METHOD_SIGNATURE = "<T:Ljava/lang/Object;>(Ljayield/lite/Yield<TT;>;)Z";
-    public static final String YIELD_SIGNATURE = "<T:Ljava/lang/Object;>(TT;)V";
-    public static final String YIELD_DESC = "(Ljava/lang/Object;)V";
 
     private final ClassWriter visitor;
     private final SerializedLambda traversable;
@@ -58,16 +56,22 @@ public class AdvancerFromTraversable extends ClassVisitor implements Opcodes {
     }
 
     private void visitFields() {
-        Iterator<LocalVariable> variableIterator = localVariables.get(targetName).values().iterator();
+        Iterator<LocalVariable> variableIterator = localVariables.get(targetName)
+                                                                 .values()
+                                                                 .iterator();
         LocalVariable variable;
         while (variableIterator.hasNext()) {
             variable = variableIterator.next();
-            if (!variable.getName().equals(YIELD_VARIABLE_NAME)) {
-                super.visitField(ACC_PRIVATE, variable.getName(), variable.getDesc(), variable.getSignature(), null).visitEnd();
+            if (!variable.getName()
+                         .equals(YIELD_VARIABLE_NAME)) {
+                super.visitField(ACC_PRIVATE, variable.getName(), variable.getDesc(), variable.getSignature(), null)
+                     .visitEnd();
             }
         }
-        super.visitField(ACC_PRIVATE, STATE_FIELD_NAME, "[I", null, null).visitEnd();
-        ramifications.forEach(ramification -> super.visitField(ACC_PRIVATE, STATE_FIELD_NAME + ramification, "[I", null, null).visitEnd());
+        super.visitField(ACC_PRIVATE, STATE_FIELD_NAME, "[I", null, null)
+             .visitEnd();
+        ramifications.forEach(ramification -> super.visitField(ACC_PRIVATE, STATE_FIELD_NAME + ramification, "[I", null, null)
+                                                   .visitEnd());
     }
 
     @Override
@@ -83,32 +87,54 @@ public class AdvancerFromTraversable extends ClassVisitor implements Opcodes {
             return new ChangeOwnersMethodVisitor(super.visitMethod(access, name, desc, signature, exceptions),
                     this.traversable.getCapturingClass(),
                     this.targetName);
-        } else if (shouldInstrument(name)) {
-            return new YieldStateMachineMethodVisitor(this,
-                    super.visitMethod(access,
-                            name,
-                            getNewLambdaDesc(desc, targetName),
-                            signature,
-                            exceptions),
-                    sourceName,
-                    targetName,
-                    STATE_FIELD_NAME + name,
-                    this.localVariables.get(name));
-        } else if (this.targetName.equals(name)) {
-            ConstructorVisitor.generateConstructor(this, localVariables.get(name).values(), desc, targetName, ramifications);
-            return new StateMachineMethodVisitor(
-                    super.visitMethod(ACC_PUBLIC,
-                            TRY_ADVANCE_METHOD_NAME,
-                            TRY_ADVANCE_METHOD_DESC,
-                            signature,
-                            exceptions),
-                    this,
-                    sourceName,
-                    targetName,
-                    STATE_FIELD_NAME,
-                    this.localVariables.get(name));
+        } else {
+            Map<Integer, LocalVariable> localVariables = this.localVariables.get(name);
+
+            if (shouldInstrument(name)) {
+                this.visitLambdaFields(desc, localVariables.values());
+                return new YieldStateMachineMethodVisitor(this,
+                        super.visitMethod(access,
+                                name,
+                                getNewLambdaDesc(desc, targetName),
+                                signature,
+                                exceptions),
+                        sourceName,
+                        targetName,
+                        STATE_FIELD_NAME + name,
+                        localVariables,
+                        Type.getArgumentTypes(desc));
+
+            } else if (this.targetName.equals(name)) {
+                ConstructorVisitor.generateConstructor(this,
+                        localVariables.values(),
+                        desc,
+                        targetName,
+                        ramifications);
+                return new StateMachineMethodVisitor(
+                        super.visitMethod(ACC_PUBLIC,
+                                TRY_ADVANCE_METHOD_NAME,
+                                TRY_ADVANCE_METHOD_DESC,
+                                signature,
+                                exceptions),
+                        this,
+                        sourceName,
+                        targetName,
+                        STATE_FIELD_NAME,
+                        localVariables);
+            }
         }
         return null;
+    }
+
+    private void visitLambdaFields(String methodDescriptor, Collection<LocalVariable> values) {
+        Type[] argumentTypes = Type.getArgumentTypes(methodDescriptor);
+        values.stream()
+              .skip(argumentTypes.length)
+              .forEach(this::localVariableToField);
+    }
+
+    private void localVariableToField(LocalVariable v) {
+        this.visitField(ACC_PRIVATE, v.getName(), v.getDesc(), v.getSignature(), null);
     }
 
     private boolean shouldInstrument(String name) {

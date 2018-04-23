@@ -7,6 +7,8 @@ import org.objectweb.asm.MethodVisitor;
 import java.util.Iterator;
 import java.util.Map;
 
+import static jayield.lite.codegen.GeneratorUtils.isLoadOpcode;
+import static jayield.lite.codegen.GeneratorUtils.isStoreOpcode;
 import static jayield.lite.codegen.visitors.Constants.INT_ARRAY_DESCRIPTION;
 import static jayield.lite.codegen.visitors.method.ConstructorVisitor.STATE_FIELD_NAME;
 import static jayield.lite.codegen.visitors.method.ConstructorVisitor.YIELD_VARIABLE_NAME;

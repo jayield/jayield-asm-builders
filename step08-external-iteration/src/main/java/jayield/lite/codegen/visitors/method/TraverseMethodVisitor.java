@@ -117,55 +117,12 @@ public class TraverseMethodVisitor extends ChangeOwnersMethodVisitor implements 
         super.visitMaxs(maxStack + 1, maxLocals + 1);
     }
 
-
     protected boolean isYield(int opcode, String owner, String name, String desc, boolean isInterface) {
         return opcode == INVOKEINTERFACE &&
                 owner.equals(classNameToPath(Yield.class)) &&
                 name.equals(YIELD_METHOD_NAME) &&
                 desc.equals(YIELD_METHOD_DESCRIPTION) &&
                 isInterface;
-    }
-
-    protected boolean isLoadOpcode(int opcode) {
-        switch (opcode) {
-            case ALOAD:
-            case FLOAD:
-            case LLOAD:
-            case ILOAD:
-            case AALOAD:
-            case BALOAD:
-            case CALOAD:
-            case DALOAD:
-            case DLOAD:
-            case FALOAD:
-            case IALOAD:
-            case LALOAD:
-            case SALOAD:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    protected boolean isStoreOpcode(int opcode) {
-        switch (opcode) {
-            case ASTORE:
-            case FSTORE:
-            case LSTORE:
-            case ISTORE:
-            case AASTORE:
-            case BASTORE:
-            case CASTORE:
-            case DASTORE:
-            case DSTORE:
-            case FASTORE:
-            case IASTORE:
-            case LASTORE:
-            case SASTORE:
-                return true;
-            default:
-                return false;
-        }
     }
 
     protected int getVarMapping(int var) {

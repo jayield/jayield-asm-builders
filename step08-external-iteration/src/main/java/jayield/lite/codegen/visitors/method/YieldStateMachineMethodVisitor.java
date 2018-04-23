@@ -3,16 +3,21 @@ package jayield.lite.codegen.visitors.method;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Type;
 
-import java.util.Map;
-import java.util.Stack;
+import java.util.*;
+
+import static jayield.lite.codegen.GeneratorUtils.isLoadOpcode;
+import static jayield.lite.codegen.GeneratorUtils.isStoreOpcode;
 
 public class YieldStateMachineMethodVisitor extends ChangeOwnersMethodVisitor {
 
     private final ClassVisitor klass;
     private final String stateFieldName;
-    private final int itemVar;
+    private final String classTypeName;
     private final Map<Integer, LocalVariable> localVariables;
+    private final int itemIndex;
+    private final Set<Label> visitedLabels;
     private int state = 0;
     private Label nextLabel;
     private Label startLabel;
@@ -26,39 +31,57 @@ public class YieldStateMachineMethodVisitor extends ChangeOwnersMethodVisitor {
                                           String originalName,
                                           String newName,
                                           String stateFieldName,
-                                          Map<Integer, LocalVariable> localVariables) {
+                                          Map<Integer, LocalVariable> localVariables,
+                                          Type[] argumentTypes) {
         super(methodVisitor, originalName, newName);
         this.klass = klass;
         this.stateFieldName = stateFieldName;
         this.localVariables = localVariables;
-        itemVar = localVariables.size() - 1;
         this.labelStack = new Stack<>();
+        this.classTypeName = String.format("L%s;", newName);
+        this.itemIndex = argumentTypes.length - 1;
+        this.visitedLabels = new HashSet<>();
     }
 
 
     @Override
     public void visitVarInsn(int opcode, int var) {
-        super.visitVarInsn(opcode, getActualVar(var));
+        int actualVar = getActualVar(var);
+        if (isLoadOpcode(opcode) && isLocalVariable(var)) {
+            LocalVariable localVariable = this.localVariables.get(var);
+            super.visitVarInsn(ALOAD, getStateVar());
+            super.visitFieldInsn(GETFIELD, newOwner, localVariable.getName(), localVariable.getDesc());
+            super.visitVarInsn(opcode + 33, actualVar);
+            super.visitVarInsn(opcode, actualVar);
+        } else if (isStoreOpcode(opcode) && isLocalVariable(var)) {
+            LocalVariable localVariable = this.localVariables.get(var);
+            super.visitVarInsn(opcode, actualVar);
+            super.visitVarInsn(ALOAD, getStateVar());
+            super.visitVarInsn(opcode - 33, actualVar);
+            super.visitFieldInsn(PUTFIELD, newOwner, localVariable.getName(), localVariable.getDesc());
+            finishCycle();
+        } else {
+            super.visitVarInsn(opcode, actualVar);
+        }
+    }
+
+    @Override
+    public void visitFrame(int type, int nLocal, Object[] local, int nStack, Object[] stack) {
+        super.visitFrame(type, nLocal, local, nStack, stack);
     }
 
     @Override
     public void visitIincInsn(int var, int increment) {
-        super.visitIincInsn(getActualVar(var), increment);
+        super.visitLdcInsn(increment);
+        this.visitVarInsn(ILOAD, var);
+        super.visitInsn(IADD);
+        this.visitVarInsn(ISTORE, var);
     }
 
     @Override
     public void visitLocalVariable(String name, String desc, String signature, Label start, Label end, int index) {
         super.visitLocalVariable(name, desc, signature, start, end, getActualVar(index));
     }
-
-    private int getActualVar(int var) {
-        if (var == itemVar) {
-            return itemVar + 1;
-        } else {
-            return var;
-        }
-    }
-
 
     @Override
     public void visitCode() {
@@ -68,29 +91,22 @@ public class YieldStateMachineMethodVisitor extends ChangeOwnersMethodVisitor {
         startState(nextLabel);
     }
 
-    private void printCurrentState() {
-        mv.visitFieldInsn(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;");
-        mv.visitLdcInsn("state: %d");
-        mv.visitInsn(ICONST_1);
-        mv.visitTypeInsn(ANEWARRAY, "java/lang/Object");
-        mv.visitInsn(DUP);
-        mv.visitInsn(ICONST_0);
-        super.visitVarInsn(ALOAD, getStateVar());
-        super.visitFieldInsn(GETFIELD, newOwner, stateFieldName, "[I");
-        mv.visitInsn(ICONST_0);
-        super.visitInsn(IALOAD);
-        mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false);
-        mv.visitInsn(AASTORE);
-        mv.visitMethodInsn(INVOKESTATIC, "java/lang/String", "format", "(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/String;", false);
-        mv.visitMethodInsn(INVOKEVIRTUAL, "java/io/PrintStream", "println", "(Ljava/lang/String;)V", false);
-    }
-
     @Override
     public void visitJumpInsn(int opcode, Label label) {
         String name = label.toString();
         String desc = "Z";
+
         this.klass.visitField(ACC_PRIVATE, name, desc, null, null).visitEnd();
+
+        // handle cycles
+        if(this.visitedLabels.contains(label)){
+            this.decrementState();
+        }
+
+        //jump
         super.visitJumpInsn(opcode, label);
+
+        //handle ifs
         super.visitVarInsn(ALOAD, getStateVar());
         super.visitInsn(ICONST_1);
         super.visitFieldInsn(PUTFIELD, newOwner, name, desc);
@@ -100,6 +116,7 @@ public class YieldStateMachineMethodVisitor extends ChangeOwnersMethodVisitor {
 
     @Override
     public void visitLabel(Label label) {
+        this.visitedLabels.add(label);
         if (!this.labelStack.empty() && this.labelStack.peek().equals(label)) {
             this.labelStack.pop();
             Label label1 = new Label();
@@ -132,21 +149,6 @@ public class YieldStateMachineMethodVisitor extends ChangeOwnersMethodVisitor {
         }
     }
 
-    private void finishCycle() {
-        finishState();
-        nextLabel = new Label();
-        startState(nextLabel);
-        this.notOver = false;
-    }
-
-    private boolean isRet(int opcode, String owner, String name, String desc, boolean itf) {
-        return opcode == INVOKEINTERFACE &&
-                "jayield/lite/Yield".equals(owner) &&
-                "ret".equals(name) &&
-                "(Ljava/lang/Object;)V".equals(desc) &&
-                itf;
-    }
-
     @Override
     public void visitInsn(int opcode) {
         if (opcode == RETURN) {
@@ -168,24 +170,79 @@ public class YieldStateMachineMethodVisitor extends ChangeOwnersMethodVisitor {
         super.visitInsn(opcode);
     }
 
+    @Override
+    public void visitMaxs(int maxStack, int maxLocals) {
+        super.visitLocalVariable("this", classTypeName, null, startLabel, endLabel, getStateVar());
+        super.visitMaxs(maxStack, maxLocals);
+    }
+
+    private int getActualVar(int var) {
+        if(var == itemIndex) {
+            return itemIndex + 1;
+        } else if (var > itemIndex) {
+            return var + 1;
+        } else {
+            return var;
+        }
+    }
+
+    private boolean isLocalVariable(int var) {
+        return var > itemIndex;
+    }
+
+    private void printCurrentState() {
+        mv.visitFieldInsn(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;");
+        mv.visitLdcInsn("state: %d");
+        mv.visitInsn(ICONST_1);
+        mv.visitTypeInsn(ANEWARRAY, "java/lang/Object");
+        mv.visitInsn(DUP);
+        mv.visitInsn(ICONST_0);
+        super.visitVarInsn(ALOAD, getStateVar());
+        super.visitFieldInsn(GETFIELD, newOwner, stateFieldName, "[I");
+        mv.visitInsn(ICONST_0);
+        super.visitInsn(IALOAD);
+        mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false);
+        mv.visitInsn(AASTORE);
+        mv.visitMethodInsn(INVOKESTATIC, "java/lang/String", "format", "(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/String;", false);
+        mv.visitMethodInsn(INVOKEVIRTUAL, "java/io/PrintStream", "println", "(Ljava/lang/String;)V", false);
+    }
+
+    private void finishCycle() {
+        finishState();
+        nextLabel = new Label();
+        startState(nextLabel);
+        this.notOver = false;
+    }
+
+    private boolean isRet(int opcode, String owner, String name, String desc, boolean itf) {
+        return opcode == INVOKEINTERFACE &&
+                "jayield/lite/Yield".equals(owner) &&
+                "ret".equals(name) &&
+                "(Ljava/lang/Object;)V".equals(desc) &&
+                itf;
+    }
+
     private void finishState() {
-        // set State End Label
-
-        // Increment current state
-//        incrementState();
-
         super.visitInsn(RETURN);
         super.visitLabel(nextLabel);
     }
 
     private void incrementState() {
+        changeState(IADD, ICONST_1);
+    }
+
+    private void decrementState() {
+        changeState(ISUB, ICONST_2);
+    }
+
+    private void changeState(int op, int value) {
         super.visitVarInsn(ALOAD, getStateVar());
         super.visitFieldInsn(GETFIELD, newOwner, stateFieldName, "[I");
         super.visitInsn(ICONST_0);
         super.visitInsn(DUP2);
         super.visitInsn(IALOAD);
-        super.visitInsn(ICONST_1);
-        super.visitInsn(IADD);
+        super.visitInsn(value);
+        super.visitInsn(op);
         super.visitInsn(IASTORE);
     }
 
@@ -205,13 +262,7 @@ public class YieldStateMachineMethodVisitor extends ChangeOwnersMethodVisitor {
         incrementState();
     }
 
-    @Override
-    public void visitMaxs(int maxStack, int maxLocals) {
-        super.visitLocalVariable(stateFieldName, "[I", null, startLabel, endLabel, getStateVar());
-        super.visitMaxs(maxStack + 1, maxLocals + 1);
-    }
-
     private int getStateVar() {
-        return this.localVariables.size() - 1;
+        return itemIndex;
     }
 }

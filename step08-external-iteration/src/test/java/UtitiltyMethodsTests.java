@@ -201,10 +201,11 @@ public class UtitiltyMethodsTests {
         List<Integer> expected = Arrays.asList(0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3);
         Integer[] input = new Integer[]{0, 1, 2, 3};
         int step = 0;
+        int limit = 3;
 
         Traversable<Integer> series = Traversable.of(input)
                 .traverseWith(source -> yield -> source.traverse(item -> {
-                    for (int i = 0; i < 3; i++) {
+                    for (int i = 0; i < limit; i++) {
                         yield.ret(item);
 
                     }
