@@ -1,10 +1,3 @@
 // To declare projects as part of a multi-project build use the 'include' method
-include 'step01-copy-with-new-method'
-include 'step02-asmifier-gen-code'
-include 'step03-wrapping-advancer'
-include 'step04-visitor'
-include 'step05-lambda-bytecodes'
-include 'step06-bytebuddy'
-include 'step07-state-machines'
-include 'step08-external-iteration'
+include 'jayield-advancer'
 
