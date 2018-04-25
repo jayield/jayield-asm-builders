@@ -5,8 +5,8 @@ import jayield.boxes.IntBox;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static jayield.advancer.TestUtils.makeAssertions;
@@ -34,6 +34,24 @@ public class AdvancerTests {
                     yield.ret(n[0]++);
                     yield.ret(n[0]++);
                     yield.ret(n[0]++);
+                });
+
+        makeAssertions(expected, traversable.advancer());
+    }
+
+    @Test
+    public void testAdvancerBranching() {
+        List<Integer> expected = Collections.singletonList(0);
+        int[] n = new int[]{0};
+
+        Traversable<Integer> traversable = Traversable.<Integer>empty()
+                .traverseWith(source -> yield -> {
+                    if(n[0] % 2 == 0) {
+                        yield.ret(n[0]++);
+                    } else {
+                        n[0] *= 2;
+                        yield.ret(n[0]);
+                    }
                 });
 
         makeAssertions(expected, traversable.advancer());
