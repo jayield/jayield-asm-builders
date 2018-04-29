@@ -1,6 +1,5 @@
 package jayield.traversable;
 
-import jayield.Traversable;
 import jayield.advancer.Advancer;
 import jayield.Yield;
 import jayield.boxes.Box;

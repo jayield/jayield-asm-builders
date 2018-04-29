@@ -1,10 +1,9 @@
-package jayield;
+package jayield.traversable;
 
+import jayield.Yield;
 import jayield.advancer.Advancer;
+import jayield.advancer.generator.Generator;
 import jayield.advancer.AdvancerIterator;
-import jayield.traversable.TraversableEmpty;
-import jayield.traversable.TraversableIterate;
-import jayield.traversable.TraversableOf;
 
 import java.io.Serializable;
 import java.util.Iterator;
@@ -34,7 +33,7 @@ public interface Traversable<T> extends Serializable {
     }
 
     default Advancer<T> advancer() {
-        throw new UnsupportedOperationException();
+        return Generator.generateAdvancer(this);
     }
 
     default Iterator<T> iterator() {

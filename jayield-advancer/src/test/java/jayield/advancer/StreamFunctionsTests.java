@@ -1,6 +1,6 @@
 package jayield.advancer;
 
-import jayield.Traversable;
+import jayield.traversable.Traversable;
 import jayield.boxes.IntBox;
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -10,7 +10,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import static jayield.advancer.TestUtils.makeAssertions;
 
@@ -39,9 +41,7 @@ public class StreamFunctionsTests {
         int times = 2;
 
         Traversable<Integer> traversable = Traversable.of(input)
-                .traverseWith(source -> yield -> source.traverse(item -> {
-                    yield.ret(item * times);
-                }));
+                .traverseWith(source -> yield -> source.traverse(item -> yield.ret(item * times)));
 
         makeAssertions(expected, traversable.advancer());
     }
@@ -64,6 +64,45 @@ public class StreamFunctionsTests {
     }
 
     @Test
+    public void testLimit() {
+        List<Integer> expected = Arrays.asList(0, 1);
+        Integer[] input = new Integer[]{0, 1, 2, 3};
+        final IntBox box = new IntBox(-1);
+        int threshold = 2;
+
+        Traversable<Integer> traversable = Traversable.of(input)
+                                                      .traverseWith(source -> yield -> source.traverse(item -> {
+                                                          if (box.inc() < threshold) {
+                                                              yield.ret(item);
+                                                          }
+                                                      }));
+
+        makeAssertions(expected, traversable.advancer());
+    }
+
+    @Test
+    public void testPeek() {
+        List<Integer> expected = Arrays.asList(0, 1, 2, 3);
+        List<Integer> peekExpectation = Arrays.asList(1, 1, 1, 1);
+        List<Integer> peekActual = new ArrayList<>();
+        Integer[] input = new Integer[]{0, 1, 2, 3};
+        Consumer<Integer> action = peekActual::add;
+
+
+        Traversable<Integer> traversable = Traversable.of(input)
+                                                      .traverseWith(source -> yield -> source.traverse(item -> {
+                                                          action.accept(1);
+                                                          yield.ret(item);
+                                                      }));
+
+        makeAssertions(expected, traversable.advancer());
+        Assert.assertEquals(peekExpectation.size(), peekActual.size());
+        for (int i = 0; i < peekActual.size(); i++) {
+            Assert.assertEquals(peekExpectation.get(i), peekActual.get(i));
+        }
+    }
+
+    @Test
     public void testDistinct() {
         List<Integer> expected = Arrays.asList(0, 1, 2, 3, 4, 5);
         Integer[] input = new Integer[]{0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0};
@@ -79,6 +118,7 @@ public class StreamFunctionsTests {
         makeAssertions(expected, traversable.advancer());
     }
 
+    @Ignore
     @Test
     public void testFlatmap() {
         List<Integer> expected = Arrays.asList(0, 1, 2, 3);

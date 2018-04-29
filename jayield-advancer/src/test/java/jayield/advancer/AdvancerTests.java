@@ -1,8 +1,9 @@
 package jayield.advancer;
 
-import jayield.Traversable;
+import jayield.traversable.Traversable;
 import jayield.boxes.IntBox;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -12,16 +13,6 @@ import java.util.List;
 import static jayield.advancer.TestUtils.makeAssertions;
 
 public class AdvancerTests {
-
-    @Test
-    public void testAdvancingElementByElement() {
-        List<Integer> expected = Arrays.asList(0, 1, 2, 3, 4);
-        Integer[] input = new Integer[]{0, 1, 2, 3, 4};
-
-        Traversable<Integer> traversable = Traversable.of(input);
-
-        makeAssertions(expected, traversable.advancer());
-    }
 
     @Test
     public void testAdvancerAsValueGenerator() {
@@ -34,24 +25,6 @@ public class AdvancerTests {
                     yield.ret(n[0]++);
                     yield.ret(n[0]++);
                     yield.ret(n[0]++);
-                });
-
-        makeAssertions(expected, traversable.advancer());
-    }
-
-    @Test
-    public void testAdvancerBranching() {
-        List<Integer> expected = Collections.singletonList(0);
-        int[] n = new int[]{0};
-
-        Traversable<Integer> traversable = Traversable.<Integer>empty()
-                .traverseWith(source -> yield -> {
-                    if(n[0] % 2 == 0) {
-                        yield.ret(n[0]++);
-                    } else {
-                        n[0] *= 2;
-                        yield.ret(n[0]);
-                    }
                 });
 
         makeAssertions(expected, traversable.advancer());
@@ -74,59 +47,29 @@ public class AdvancerTests {
     }
 
     @Test
-    public void testTraverseWithThenTryAdvance() {
-        Integer[] first = new Integer[1];
+    public void testAdvancerBranching() {
+        List<Integer> expected = Collections.singletonList(0);
+        int[] n = new int[]{0};
 
-        Traversable.iterate(1, i -> i)
-                .<Integer>traverseWith(source -> yield -> source.traverse(item -> yield.ret(item * 2)))
-                .advancer()
-                .tryAdvance(item -> first[0] = item);
-
-        Assert.assertEquals(2, first[0].intValue());
-    }
-
-    @Test
-    public void testDuplicate() {
-        List<Integer> expected = Arrays.asList(0, 0, 1, 1, 2, 2, 3, 3);
-        Integer[] input = new Integer[]{0, 1, 2, 3};
-
-        Traversable<Integer> traversable = Traversable.of(input)
-                                                      .traverseWith(source -> yield -> source.traverse(item -> {
-                                                          yield.ret(item);
-                                                          yield.ret(item);
-                                                      }));
+        Traversable<Integer> traversable = Traversable.<Integer>empty()
+                .traverseWith(source -> yield -> {
+                    if (n[0] % 2 == 0) {
+                        yield.ret(n[0]++);
+                    } else {
+                        n[0] *= 2;
+                        yield.ret(n[0]);
+                    }
+                });
 
         makeAssertions(expected, traversable.advancer());
     }
 
     @Test
-    public void testTriplicate() {
-        List<Integer> expected = Arrays.asList(0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3);
-        Integer[] input = new Integer[]{0, 1, 2, 3};
+    public void testAdvancingElementByElement() {
+        List<Integer> expected = Arrays.asList(0, 1, 2, 3, 4);
+        Integer[] input = new Integer[]{0, 1, 2, 3, 4};
 
-        Traversable<Integer> traversable = Traversable.of(input)
-                                                      .traverseWith(source -> yield -> source.traverse(item -> {
-                                                          yield.ret(item);
-                                                          yield.ret(item);
-                                                          yield.ret(item);
-                                                      }));
-
-        makeAssertions(expected, traversable.advancer());
-    }
-
-    @Test
-    public void testTriplicateWithFor() {
-        List<Integer> expected = Arrays.asList(0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3);
-        Integer[] input = new Integer[]{0, 1, 2, 3};
-        int limit = 3;
-
-        Traversable<Integer> traversable = Traversable.of(input)
-                                                      .traverseWith(source -> yield -> source.traverse(item -> {
-                                                          for (int i = 0; i < limit; i++) {
-                                                              yield.ret(item);
-
-                                                          }
-                                                      }));
+        Traversable<Integer> traversable = Traversable.of(input);
 
         makeAssertions(expected, traversable.advancer());
     }
@@ -157,6 +100,63 @@ public class AdvancerTests {
                                                       .traverseWith(source -> yield -> source.traverse(item -> {
                                                           if (box.inc() == 1) {
                                                               yield.ret(item);
+                                                              yield.ret(item);
+                                                          }
+                                                      }));
+
+        makeAssertions(expected, traversable.advancer());
+    }
+
+    @Test
+    public void testDuplicate() {
+        List<Integer> expected = Arrays.asList(0, 0, 1, 1, 2, 2, 3, 3);
+        Integer[] input = new Integer[]{0, 1, 2, 3};
+
+        Traversable<Integer> traversable = Traversable.of(input)
+                                                      .traverseWith(source -> yield -> source.traverse(item -> {
+                                                          yield.ret(item);
+                                                          yield.ret(item);
+                                                      }));
+
+        makeAssertions(expected, traversable.advancer());
+    }
+
+    @Test
+    public void testTraverseWithThenTryAdvance() {
+        Integer[] first = new Integer[1];
+
+        Traversable.iterate(1, i -> i)
+                .<Integer>traverseWith(source -> yield -> source.traverse(item -> yield.ret(item * 2)))
+                .advancer()
+                .tryAdvance(item -> first[0] = item);
+
+        Assert.assertEquals(2, first[0].intValue());
+    }
+
+    @Test
+    public void testTriplicate() {
+        List<Integer> expected = Arrays.asList(0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3);
+        Integer[] input = new Integer[]{0, 1, 2, 3};
+
+        Traversable<Integer> traversable = Traversable.of(input)
+                                                      .traverseWith(source -> yield -> source.traverse(item -> {
+                                                          yield.ret(item);
+                                                          yield.ret(item);
+                                                          yield.ret(item);
+                                                      }));
+
+        makeAssertions(expected, traversable.advancer());
+    }
+
+    @Test
+    public void testTriplicateWithFor() {
+        List<Integer> expected = Arrays.asList(0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3);
+        Integer[] input = new Integer[]{0, 1, 2, 3};
+        int limit = 3;
+
+        Traversable<Integer> traversable = Traversable.of(input)
+                                                      .traverseWith(source -> yield -> source.traverse(item -> {
+                                                          for (int i = 0; i < limit; i++) {
                                                               yield.ret(item);
                                                           }
                                                       }));
