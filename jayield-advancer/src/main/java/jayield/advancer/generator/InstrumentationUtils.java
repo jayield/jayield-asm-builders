@@ -2,10 +2,9 @@ package jayield.advancer.generator;
 
 import jayield.Yield;
 import jayield.traversable.Traversable;
-import jdk.internal.org.objectweb.asm.util.ASMifier;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.util.ASMifier;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;

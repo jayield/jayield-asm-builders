@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static java.lang.String.format;
-import static jdk.internal.org.objectweb.asm.ClassReader.SKIP_FRAMES;
+import static org.objectweb.asm.ClassReader.SKIP_FRAMES;
 import static org.objectweb.asm.ClassWriter.COMPUTE_FRAMES;
 import static org.objectweb.asm.ClassWriter.COMPUTE_MAXS;
 
