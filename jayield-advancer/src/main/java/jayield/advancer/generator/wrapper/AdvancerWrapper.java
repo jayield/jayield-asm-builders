@@ -1,8 +1,8 @@
 package jayield.advancer.generator.wrapper;
 
 import jayield.advancer.Advancer;
-import jayield.Yield;
-import jayield.boxes.BoolBox;
+import org.jayield.Yield;
+import org.jayield.boxes.BoolBox;
 
 public class AdvancerWrapper<T> implements Advancer<T> {
 

@@ -1,4 +1,4 @@
-package jayield.advancer.generator.visitor.traversable;
+package jayield.advancer.generator.visitor.traverser;
 
 import jayield.advancer.Advancer;
 import jayield.advancer.generator.visitor.constructor.ConstructorVisitor;
@@ -34,22 +34,22 @@ import static jayield.advancer.generator.InitializeMethodGenerator.generateIniti
 import static jayield.advancer.generator.InstrumentationUtils.getClassPath;
 import static jayield.advancer.generator.InstrumentationUtils.insertTypeInDescriptor;
 
-public class TraversableVisitor extends ClassVisitor implements Opcodes {
+public class TraverserVisitor extends ClassVisitor implements Opcodes {
 
-    private final SerializedLambda traversable;
+    private final SerializedLambda traverser;
     private final String[] interfaces;
     private final String sourceName;
     private final String targetName;
     private final List<String> ramifications;
     private final Map<String, Info> methodInfos;
 
-    public TraversableVisitor(ClassWriter visitor, SerializedLambda traversable) {
+    public TraverserVisitor(ClassWriter visitor, SerializedLambda traverser) {
         super(ASM6, visitor);
-        this.traversable = traversable;
+        this.traverser = traverser;
         this.interfaces = new String[]{getClassPath(Initializable.class), getClassPath(Advancer.class)};
-        this.sourceName = traversable.getCapturingClass();
-        this.targetName = traversable.getImplMethodName();
-        this.methodInfos = InfoExtractorVisitor.extractInfo(traversable);
+        this.sourceName = traverser.getCapturingClass();
+        this.targetName = traverser.getImplMethodName();
+        this.methodInfos = InfoExtractorVisitor.extractInfo(traverser);
         this.ramifications = methodInfos.keySet()
                                         .stream()
                                         .map(this.methodInfos::get)
@@ -71,7 +71,7 @@ public class TraversableVisitor extends ClassVisitor implements Opcodes {
     @Override
     public void visitEnd() {
         super.visitEnd();
-        generateInitializeMethod(traversable, this, targetName);
+        generateInitializeMethod(traverser, this, targetName);
     }
 
     private void visitFields() {
@@ -106,7 +106,7 @@ public class TraversableVisitor extends ClassVisitor implements Opcodes {
             return super.visitMethod(access, CONSTRUCTOR_METHOD_NAME, desc, signature, exceptions);
         } else if (INITIALIZE.equals(name)) {
             return new ChangeOwnersMethodVisitor(super.visitMethod(access, name, desc, signature, exceptions),
-                                                 this.traversable.getCapturingClass(),
+                                                 this.traverser.getCapturingClass(),
                                                  this.targetName);
         } else {
             Info methodInfo = this.methodInfos.get(name);
@@ -157,7 +157,9 @@ public class TraversableVisitor extends ClassVisitor implements Opcodes {
     }
 
     private void localVariableToField(LocalVariable v) {
-        this.visitField(ACC_PRIVATE, v.getName(), v.getDesc(), v.getSignature(), null);
+        if(!v.getName().equals("yield")) {
+            this.visitField(ACC_PRIVATE, v.getName(), v.getDesc(), v.getSignature(), null);
+        }
     }
 
     private boolean shouldInstrument(String name) {

@@ -18,6 +18,8 @@ dependencies {
     // https://mvnrepository.com/artifact/org.ow2.asm/asm-util
     compile group: 'org.ow2.asm', name: 'asm-util', version: '6.1.1'
 
+    compile group: 'com.github.jayield', name: 'jayield', version: '1.0.0-SNAPSHOT'
+
     // Use JUnit test framework
     testCompile 'junit:junit:4.12'
 }

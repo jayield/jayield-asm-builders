@@ -1,11 +1,13 @@
 package jayield.advancer.generator;
 
+import jdk.internal.org.objectweb.asm.Type;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
 import java.lang.invoke.SerializedLambda;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import static java.lang.String.format;
 import static jayield.advancer.generator.Constants.CONSTRUCTOR_METHOD_NAME;
@@ -54,28 +56,10 @@ public class InitializeMethodGenerator implements Opcodes {
 
     }
 
-    private int getMaxLocals() {
-        return lambda.getCapturedArgCount() + 1;
-    }
-
-    private int getMaxStack() {
-        return lambda.getCapturedArgCount() + 1;
-    }
-
-    private void generateAdvancer(MethodVisitor mv) {
-        mv.visitMethodInsn(INVOKESPECIAL, targetName, CONSTRUCTOR_METHOD_NAME, getSignatureFromLambda(), false);
-    }
-
-    private String getSignatureFromLambda() {
-        String signature = lambda.getImplMethodSignature();
-        String parameters = signature.substring(0, signature.lastIndexOf(OBJECT));
-        return format("%s%c%c", parameters, METHOD_PARAMETERS_END, VOID);
-    }
-
     private void loadCapturedArguments(MethodVisitor mv) {
         Consumer<MethodVisitor>[] castersToArgumentType = getCapturedArgumentTypeCasters();
         mv.visitInsn(ICONST_0);
-        mv.visitVarInsn(ISTORE, 2); // initialize counter to 0
+        mv.visitVarInsn(ISTORE, 2); // initialize counter to
         for (int i = 0; i < lambda.getCapturedArgCount(); i++) {
             mv.visitVarInsn(ALOAD, 1); // load SerializedLambda
             mv.visitVarInsn(ILOAD, 2); // load Counter
@@ -85,15 +69,31 @@ public class InitializeMethodGenerator implements Opcodes {
                                GET_CAPTURED_ARG_METHOD_SIGNATURE,
                                false);
             castersToArgumentType[i].accept(mv); // cast argument to the method's declared type
-            mv.visitIincInsn(2, 1);
+            if((i + 1) < lambda.getCapturedArgCount()){
+                mv.visitIincInsn(2, 1);
+            }
         }
+    }
+
+    private void generateAdvancer(MethodVisitor mv) {
+        mv.visitMethodInsn(INVOKESPECIAL, targetName, CONSTRUCTOR_METHOD_NAME, getSignatureFromLambda(), false);
+    }
+
+    private int getMaxStack() {
+        return lambda.getCapturedArgCount() + 1;
+    }
+
+    private int getMaxLocals() {
+        return lambda.getCapturedArgCount() + 1;
     }
 
     @SuppressWarnings("unchecked")
     private Consumer<MethodVisitor>[] getCapturedArgumentTypeCasters() {
         Consumer<MethodVisitor>[] result = new Consumer[lambda.getCapturedArgCount()];
-        String[] signatureTokens = getSignatureTokens(lambda.getImplMethodSignature());
-        for (int i = 0; i < signatureTokens.length; i++) {
+        String[] signatureTokens = Stream.of(Type.getArgumentTypes(lambda.getImplMethodSignature()))
+                                         .map(Type::getDescriptor)
+                                         .toArray(String[]::new);
+        for (int i = 0; i < lambda.getCapturedArgCount(); i++) {
             if (signatureTokens[i].length() > 1) {
                 result[i] = typeCast(signatureTokens[i]);
             } else {
@@ -103,36 +103,13 @@ public class InitializeMethodGenerator implements Opcodes {
         return result;
     }
 
-    private Consumer<MethodVisitor> typeCast(String token) {
-        return mv -> mv.visitTypeInsn(CHECKCAST, token);
+    private String getSignatureFromLambda() {
+        String signature = lambda.getImplMethodSignature();
+        String parameters = signature.substring(0, signature.lastIndexOf(OBJECT));
+        return format("%s%c%c", parameters, METHOD_PARAMETERS_END, VOID);
     }
 
-    private String[] getSignatureTokens(String signature) {
-        String[] tokens = new String[lambda.getCapturedArgCount()];
-        int tokenCount = 0;
-        int charIndexer = 0;
-        while (tokenCount < lambda.getCapturedArgCount()) {
-            char currentCharacter = signature.charAt(charIndexer);
-            if (currentCharacter == OBJECT) {
-                int typeDescriptionEndIndex = signature.indexOf(OBJECT_DELIMITER, charIndexer);
-                tokens[tokenCount++] = signature.substring(charIndexer + 1,
-                                                           typeDescriptionEndIndex); // + 1, Start after the L character
-                charIndexer = typeDescriptionEndIndex;
-            } else if (currentCharacter == ARRAY) {
-                char nextChar = signature.charAt(charIndexer + 1);
-                if (nextChar == OBJECT) {
-                    int typeDescriptionEndIndex = signature.indexOf(OBJECT_DELIMITER, charIndexer);
-                    tokens[tokenCount++] = signature.substring(charIndexer, typeDescriptionEndIndex);
-                    charIndexer = typeDescriptionEndIndex + 1;
-                } else {
-                    tokens[tokenCount++] = signature.substring(charIndexer, charIndexer + 2);
-                    charIndexer = charIndexer + 1;
-                }
-            } else if (currentCharacter != METHOD_PARAMETERS_START) {
-                tokens[tokenCount++] = String.valueOf(currentCharacter);
-            }
-            charIndexer++;
-        }
-        return tokens;
+    private Consumer<MethodVisitor> typeCast(String token) {
+        return mv -> mv.visitTypeInsn(CHECKCAST, token);
     }
 }

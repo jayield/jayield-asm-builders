@@ -1,7 +1,7 @@
 package jayield.advancer.generator;
 
-import jayield.Yield;
-import jayield.traversable.Traversable;
+import jayield.advancer.Advancer;
+import org.jayield.Yield;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.util.ASMifier;
 
@@ -174,10 +174,10 @@ public class InstrumentationUtils implements Opcodes {
     }
 
     public static String getOutputPath() {
-        return Traversable.class.getProtectionDomain()
-                                .getCodeSource()
-                                .getLocation()
-                                .getPath();
+        return Advancer.class.getProtectionDomain()
+                             .getCodeSource()
+                             .getLocation()
+                             .getPath();
     }
 
     public static void debugASM(boolean enabled, String filename) throws Exception {

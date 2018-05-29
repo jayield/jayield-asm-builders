@@ -1,6 +1,6 @@
 package jayield.advancer.generator.visitor.constructor;
 
-import jayield.traversable.Traversable;
+import jayield.advancer.Advancer;
 import jayield.advancer.generator.visitor.info.extractor.local.variable.LocalVariable;
 import jayield.advancer.generator.wrapper.AbstractAdvance;
 import org.objectweb.asm.ClassVisitor;
@@ -17,7 +17,7 @@ import static jayield.advancer.generator.Constants.INT_ARRAY_DESCRIPTOR;
 import static jayield.advancer.generator.Constants.ITERATOR;
 import static jayield.advancer.generator.Constants.ITERATOR_DESCRIPTOR;
 import static jayield.advancer.generator.Constants.STATE_FIELD_NAME;
-import static jayield.advancer.generator.Constants.TRAVERSABLE_DESCRIPTOR;
+import static jayield.advancer.generator.Constants.TRAVERSER_DESCRIPTOR;
 import static jayield.advancer.generator.InstrumentationUtils.METHOD_PARAMETERS_END;
 import static jayield.advancer.generator.InstrumentationUtils.OBJECT;
 import static jayield.advancer.generator.InstrumentationUtils.VOID;
@@ -60,17 +60,20 @@ public class ConstructorVisitor implements Opcodes {
         emptyConstructor.visitInsn(RETURN);
         emptyConstructor.visitMaxs(1, 1);
 
-        MethodVisitor constructor = visitor.visitMethod(ACC_PUBLIC,
-                                                        CONSTRUCTOR_METHOD_NAME + owner,
-                                                        extractConstructorParameters(desc),
-                                                        null,
-                                                        null);
-        callSuper(constructor);
-        initializeFields(constructor, localVariables, owner, argumentTypes.length -1);
-        initializeState(constructor, owner, ramifications);
-        constructor.visitInsn(RETURN);
-        constructor.visitMaxs(2, 3);
-        return constructor;
+        if (Type.getArgumentTypes(desc).length > 1){
+            MethodVisitor constructor = visitor.visitMethod(ACC_PUBLIC,
+                                                            CONSTRUCTOR_METHOD_NAME + owner,
+                                                            extractConstructorParameters(desc),
+                                                            null,
+                                                            null);
+            callSuper(constructor);
+            initializeFields(constructor, localVariables, owner, argumentTypes.length -1);
+            initializeState(constructor, owner, ramifications);
+            constructor.visitInsn(RETURN);
+            constructor.visitMaxs(2, 3);
+            return constructor;
+        }
+        return emptyConstructor;
     }
 
     private static void callSuper(MethodVisitor mv) {
@@ -96,10 +99,10 @@ public class ConstructorVisitor implements Opcodes {
         while (iterator.hasNext()) {
             var = iterator.next();
             if (yieldIndex != parameterIndex - 1) {
-                if (var.getDesc().equals(TRAVERSABLE_DESCRIPTOR)) {
+                if (var.getDesc().equals(TRAVERSER_DESCRIPTOR)) {
                     LocalVariable variable = new LocalVariable(var.getName(),
                                                                var.getDesc(),
-                                                               TRAVERSABLE_DESCRIPTOR,
+                                                               TRAVERSER_DESCRIPTOR,
                                                                var.getStart(),
                                                                var.getEnd(),
                                                                var.getIndex());
@@ -118,11 +121,11 @@ public class ConstructorVisitor implements Opcodes {
                                            String owner) {
         mv.visitVarInsn(ALOAD, 0);
         mv.visitVarInsn(getLoadCode(localVariable.getDesc()), parameterIndex);
-        mv.visitMethodInsn(INVOKEINTERFACE,
-                           getClassPath(Traversable.class),
+        mv.visitMethodInsn(INVOKESTATIC,
+                           getClassPath(Advancer.class),
                            ITERATOR,
                            getMethodDescriptor(ITERATOR_DESCRIPTOR),
-                           true);
+                           false);
         mv.visitFieldInsn(PUTFIELD, owner, ITERATOR, ITERATOR_DESCRIPTOR);
     }
 

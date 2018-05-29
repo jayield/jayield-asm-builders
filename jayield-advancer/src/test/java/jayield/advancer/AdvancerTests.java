@@ -1,33 +1,48 @@
 package jayield.advancer;
 
-import jayield.traversable.Traversable;
-import jayield.boxes.IntBox;
-import org.junit.Assert;
-import org.junit.Ignore;
+import org.jayield.Query;
+import org.jayield.Traverser;
+import org.jayield.boxes.IntBox;
 import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static jayield.advancer.Advancer.from;
 import static jayield.advancer.TestUtils.makeAssertions;
+import static org.junit.Assert.assertEquals;
 
 public class AdvancerTests {
 
     @Test
-    public void testAdvancerAsValueGenerator() {
+    public void testAdvancerAsValueGeneratorFromQuery() {
         List<Integer> expected = Arrays.asList(0, 1, 2, 3);
         int[] n = new int[]{0};
 
-        Traversable<Integer> traversable = Traversable.<Integer>empty()
-                .traverseWith(source -> yield -> {
-                    yield.ret(n[0]++);
-                    yield.ret(n[0]++);
-                    yield.ret(n[0]++);
-                    yield.ret(n[0]++);
-                });
+        Query<Integer> query = Query.of().then(q -> yield -> {
+            yield.ret(n[0]++);
+            yield.ret(n[0]++);
+            yield.ret(n[0]++);
+            yield.ret(n[0]++);
+        });
 
-        makeAssertions(expected, traversable.advancer());
+        makeAssertions(expected, from(query));
+    }
+
+    @Test
+    public void testAdvancerAsValueGeneratorFromTraverser() {
+        List<Integer> expected = Arrays.asList(0, 1, 2, 3);
+        int[] n = new int[]{0};
+
+        Traverser<Integer> traverser = yield -> {
+            yield.ret(n[0]++);
+            yield.ret(n[0]++);
+            yield.ret(n[0]++);
+            yield.ret(n[0]++);
+        };
+
+        makeAssertions(expected, from(traverser));
     }
 
     @Test
@@ -36,14 +51,13 @@ public class AdvancerTests {
         int[] n = new int[]{0};
         int limit = 4;
 
-        Traversable<Integer> traversable = Traversable.<Integer>empty()
-                .traverseWith(source -> yield -> {
-                    while (n[0] < limit) {
-                        yield.ret(n[0]++);
-                    }
-                });
+        Query<Integer> query = Query.of().then(source -> yield -> {
+            while (n[0] < limit) {
+                yield.ret(n[0]++);
+            }
+        });
 
-        makeAssertions(expected, traversable.advancer());
+        makeAssertions(expected, from(query));
     }
 
     @Test
@@ -51,116 +65,112 @@ public class AdvancerTests {
         List<Integer> expected = Collections.singletonList(0);
         int[] n = new int[]{0};
 
-        Traversable<Integer> traversable = Traversable.<Integer>empty()
-                .traverseWith(source -> yield -> {
-                    if (n[0] % 2 == 0) {
-                        yield.ret(n[0]++);
-                    } else {
-                        n[0] *= 2;
-                        yield.ret(n[0]);
-                    }
-                });
+        Query<Integer> query = Query.of().then(source -> yield -> {
+            if (n[0] % 2 == 0) {
+                yield.ret(n[0]++);
+            } else {
+                n[0] *= 2;
+                yield.ret(n[0]);
+            }
+        });
 
-        makeAssertions(expected, traversable.advancer());
+        makeAssertions(expected, from(query));
     }
 
     @Test
     public void testAdvancingElementByElement() {
         List<Integer> expected = Arrays.asList(0, 1, 2, 3, 4);
-        Integer[] input = new Integer[]{0, 1, 2, 3, 4};
+        Integer[] input = {0, 1, 2, 3, 4};
 
-        Traversable<Integer> traversable = Traversable.of(input);
+        Query<Integer> query = Query.of(input);
 
-        makeAssertions(expected, traversable.advancer());
+        makeAssertions(expected, from(query));
     }
+
 
     @Test
     public void testConditionalDuplicate() {
         List<Integer> expected = Arrays.asList(1, 1);
-        Integer[] input = new Integer[]{0, 1, 2};
+        Integer[] input = {0, 1, 2};
 
-        Traversable<Integer> traversable = Traversable.of(input)
-                                                      .traverseWith(source -> yield -> source.traverse(item -> {
-                                                          if (item == 1) {
-                                                              yield.ret(item);
-                                                              yield.ret(item);
-                                                          }
-                                                      }));
+        Query<Integer> query = Query.of(input)
+                                    .then(source -> yield -> source.traverse(item -> {
+                                        if (item == 1) {
+                                            yield.ret(item);
+                                            yield.ret(item);
+                                        }
+                                    }));
 
-        makeAssertions(expected, traversable.advancer());
+        makeAssertions(expected, from(query));
     }
 
     @Test
     public void testConditionalWithExternalState() {
         List<Integer> expected = Arrays.asList(1, 1);
-        Integer[] input = new Integer[]{0, 1, 2};
+        Integer[] input = {0, 1, 2};
         IntBox box = new IntBox(-1);
 
-        Traversable<Integer> traversable = Traversable.of(input)
-                                                      .traverseWith(source -> yield -> source.traverse(item -> {
-                                                          if (box.inc() == 1) {
-                                                              yield.ret(item);
-                                                              yield.ret(item);
-                                                          }
-                                                      }));
+        Query<Integer> query = Query.of(input).then(source -> yield -> source.traverse(item -> {
+            if (box.inc() == 1) {
+                yield.ret(item);
+                yield.ret(item);
+            }
+        }));
 
-        makeAssertions(expected, traversable.advancer());
+        makeAssertions(expected, from(query));
     }
 
     @Test
     public void testDuplicate() {
         List<Integer> expected = Arrays.asList(0, 0, 1, 1, 2, 2, 3, 3);
-        Integer[] input = new Integer[]{0, 1, 2, 3};
+        Integer[] input = {0, 1, 2, 3};
 
-        Traversable<Integer> traversable = Traversable.of(input)
-                                                      .traverseWith(source -> yield -> source.traverse(item -> {
-                                                          yield.ret(item);
-                                                          yield.ret(item);
-                                                      }));
+        Query<Integer> query = Query.of(input).then(source -> yield -> source.traverse(item -> {
+            yield.ret(item);
+            yield.ret(item);
+        }));
 
-        makeAssertions(expected, traversable.advancer());
-    }
-
-    @Test
-    public void testTraverseWithThenTryAdvance() {
-        Integer[] first = new Integer[1];
-
-        Traversable.iterate(1, i -> i)
-                .<Integer>traverseWith(source -> yield -> source.traverse(item -> yield.ret(item * 2)))
-                .advancer()
-                .tryAdvance(item -> first[0] = item);
-
-        Assert.assertEquals(2, first[0].intValue());
+        makeAssertions(expected, from(query));
     }
 
     @Test
     public void testTriplicate() {
         List<Integer> expected = Arrays.asList(0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3);
-        Integer[] input = new Integer[]{0, 1, 2, 3};
+        Integer[] input = {0, 1, 2, 3};
 
-        Traversable<Integer> traversable = Traversable.of(input)
-                                                      .traverseWith(source -> yield -> source.traverse(item -> {
-                                                          yield.ret(item);
-                                                          yield.ret(item);
-                                                          yield.ret(item);
-                                                      }));
+        Query<Integer> query = Query.of(input).then(source -> yield -> source.traverse(item -> {
+            yield.ret(item);
+            yield.ret(item);
+            yield.ret(item);
+        }));
 
-        makeAssertions(expected, traversable.advancer());
+        makeAssertions(expected, from(query));
     }
 
     @Test
     public void testTriplicateWithFor() {
         List<Integer> expected = Arrays.asList(0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3);
-        Integer[] input = new Integer[]{0, 1, 2, 3};
+        Integer[] input = {0, 1, 2, 3};
         int limit = 3;
 
-        Traversable<Integer> traversable = Traversable.of(input)
-                                                      .traverseWith(source -> yield -> source.traverse(item -> {
-                                                          for (int i = 0; i < limit; i++) {
-                                                              yield.ret(item);
-                                                          }
-                                                      }));
+        Query<Integer> query = Query.of(input).then(source -> yield -> source.traverse(item -> {
+            for (int i = 0; i < limit; i++) {
+                yield.ret(item);
+            }
+        }));
 
-        makeAssertions(expected, traversable.advancer());
+        makeAssertions(expected, from(query));
+    }
+
+    @Test
+    public void testTryAdvance() {
+        Integer[] first = new Integer[1];
+
+        Query<Integer> query = Query.iterate(1, i -> i)
+                                    .then(source -> yield -> source.traverse(item -> yield.ret(item * 2)));
+
+        from(query).tryAdvance(item -> first[0] = item);
+
+        assertEquals(2, first[0].intValue());
     }
 }

@@ -1,7 +1,8 @@
 package jayield.advancer.generator.wrapper;
 
-import jayield.Yield;
-import jayield.boxes.BoolBox;
+import org.jayield.Yield;
+import org.jayield.boxes.BoolBox;
+
 
 public class YieldWrapper<T> implements Yield<T> {
 

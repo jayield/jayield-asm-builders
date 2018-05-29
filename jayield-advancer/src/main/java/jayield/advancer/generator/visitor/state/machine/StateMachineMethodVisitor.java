@@ -3,7 +3,7 @@ package jayield.advancer.generator.visitor.state.machine;
 import jayield.advancer.generator.visitor.captured.context.CapturedContextHandler;
 import jayield.advancer.generator.visitor.captured.context.CapturedContextVisitor;
 import jayield.advancer.generator.visitor.info.extractor.Info;
-import jayield.advancer.generator.visitor.traversable.TraverseMethodVisitor;
+import jayield.advancer.generator.visitor.traverser.TraverseMethodVisitor;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;

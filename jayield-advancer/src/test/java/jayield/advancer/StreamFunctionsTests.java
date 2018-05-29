@@ -1,7 +1,7 @@
 package jayield.advancer;
 
-import jayield.traversable.Traversable;
-import jayield.boxes.IntBox;
+import org.jayield.boxes.IntBox;
+import org.jayield.Query;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -12,7 +12,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 import static jayield.advancer.TestUtils.makeAssertions;
 
@@ -24,14 +23,14 @@ public class StreamFunctionsTests {
         List<Integer> expected = Arrays.asList(0, 2, 4, 6, 8);
         Integer[] input = new Integer[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 
-        Traversable<Integer> traversable = Traversable.of(input)
-                .traverseWith(source -> yield -> source.traverse(item -> {
+        Query<Integer> traverser = Query.of(input)
+                .then(source -> yield -> source.traverse(item -> {
                     if (item % 2 == 0) {
                         yield.ret(item);
                     }
                 }));
 
-        makeAssertions(expected, traversable.advancer());
+        makeAssertions(expected, Advancer.from(traverser));
     }
 
     @Test
@@ -40,10 +39,10 @@ public class StreamFunctionsTests {
         Integer[] input = new Integer[]{0, 1, 2, 3, 4};
         int times = 2;
 
-        Traversable<Integer> traversable = Traversable.of(input)
-                .traverseWith(source -> yield -> source.traverse(item -> yield.ret(item * times)));
+        Query<Integer> traverser = Query.of(input)
+                .then(source -> yield -> source.traverse(item -> yield.ret(item * times)));
 
-        makeAssertions(expected, traversable.advancer());
+        makeAssertions(expected, Advancer.from(traverser));
     }
 
     @Test
@@ -53,14 +52,14 @@ public class StreamFunctionsTests {
         final IntBox box = new IntBox(-1);
         int threshold = 2;
 
-        Traversable<Integer> traversable = Traversable.of(input)
-                .traverseWith(source -> yield -> source.traverse(item -> {
+        Query<Integer> traverser = Query.of(input)
+                .then(source -> yield -> source.traverse(item -> {
                     if (box.inc() >= threshold) {
                         yield.ret(item);
                     }
                 }));
 
-        makeAssertions(expected, traversable.advancer());
+        makeAssertions(expected, Advancer.from(traverser));
     }
 
     @Test
@@ -70,14 +69,14 @@ public class StreamFunctionsTests {
         final IntBox box = new IntBox(-1);
         int threshold = 2;
 
-        Traversable<Integer> traversable = Traversable.of(input)
-                                                      .traverseWith(source -> yield -> source.traverse(item -> {
+        Query<Integer> traverser = Query.of(input)
+                                                      .then(source -> yield -> source.traverse(item -> {
                                                           if (box.inc() < threshold) {
                                                               yield.ret(item);
                                                           }
                                                       }));
 
-        makeAssertions(expected, traversable.advancer());
+        makeAssertions(expected, Advancer.from(traverser));
     }
 
     @Test
@@ -89,13 +88,13 @@ public class StreamFunctionsTests {
         Consumer<Integer> action = peekActual::add;
 
 
-        Traversable<Integer> traversable = Traversable.of(input)
-                                                      .traverseWith(source -> yield -> source.traverse(item -> {
+        Query<Integer> traverser = Query.of(input)
+                                                      .then(source -> yield -> source.traverse(item -> {
                                                           action.accept(1);
                                                           yield.ret(item);
                                                       }));
 
-        makeAssertions(expected, traversable.advancer());
+        makeAssertions(expected, Advancer.from(traverser));
         Assert.assertEquals(peekExpectation.size(), peekActual.size());
         for (int i = 0; i < peekActual.size(); i++) {
             Assert.assertEquals(peekExpectation.get(i), peekActual.get(i));
@@ -108,14 +107,14 @@ public class StreamFunctionsTests {
         Integer[] input = new Integer[]{0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0};
         final HashSet<Integer> cache = new HashSet<>();
 
-        Traversable<Integer> traversable = Traversable.of(input)
-                .traverseWith(source -> yield -> source.traverse(item -> {
+        Query<Integer> traverser = Query.of(input)
+                .then(source -> yield -> source.traverse(item -> {
                     if (cache.add(item)) {
                         yield.ret(item);
                     }
                 }));
 
-        makeAssertions(expected, traversable.advancer());
+        makeAssertions(expected, Advancer.from(traverser));
     }
 
     @Ignore
@@ -124,13 +123,13 @@ public class StreamFunctionsTests {
         List<Integer> expected = Arrays.asList(0, 1, 2, 3);
         Integer[][] input = new Integer[][]{{0, 1}, {2, 3}};
 
-        Function<Integer[], Traversable<Integer>> mapper = Traversable::of;
+        Function<Integer[], Query<Integer>> mapper = Query::of;
 
-        Traversable<Integer> traversable = Traversable.of(input)
-                .traverseWith(source -> yield ->
+        Query<Integer> traverser = Query.of(input)
+                .then(source -> yield ->
                         source.traverse(item -> mapper.apply(item).traverse(yield)));
 
-        makeAssertions(expected, traversable.advancer());
+        makeAssertions(expected, Advancer.from(traverser));
     }
 
 }

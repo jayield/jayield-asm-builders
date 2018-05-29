@@ -1,10 +1,10 @@
 package jayield.advancer.generator;
 
-import jayield.Yield;
+import org.jayield.Traverser;
+import org.jayield.Yield;
 import jayield.advancer.Advancer;
 import jayield.advancer.generator.wrapper.YieldWrapper;
-import jayield.boxes.BoolBox;
-import jayield.traversable.Traversable;
+import org.jayield.boxes.BoolBox;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
@@ -29,7 +29,7 @@ import static jayield.advancer.generator.InstrumentationUtils.getTypeDescriptor;
 public class Constants implements Opcodes {
 
     public static final String PRINT_STREAM_DESCRIPTOR = getTypeDescriptor(PrintStream.class);
-    public static final String TRAVERSABLE_DESCRIPTOR = getTypeDescriptor(Traversable.class);
+    public static final String TRAVERSER_DESCRIPTOR = getTypeDescriptor(Traverser.class);
     public static final String ITERATOR_DESCRIPTOR = getTypeDescriptor(Iterator.class);
     public static final String INT_DESCRIPTOR = valueOf(InstrumentationUtils.INTEGER);
     public static final String BOOL_BOX_DESCRIPTOR = getTypeDescriptor(BoolBox.class);

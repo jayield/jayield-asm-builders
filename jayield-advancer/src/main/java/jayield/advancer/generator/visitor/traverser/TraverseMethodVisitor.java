@@ -1,4 +1,4 @@
-package jayield.advancer.generator.visitor.traversable;
+package jayield.advancer.generator.visitor.traverser;
 
 import jayield.advancer.generator.visitor.info.extractor.local.variable.LocalVariable;
 import jayield.advancer.generator.visitor.ownership.ChangeOwnersMethodVisitor;

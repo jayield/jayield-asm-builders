@@ -10,8 +10,7 @@ import static java.lang.String.format;
 
 class TestUtils {
 
-    static <T> void makeAssertions(List<T> expected,
-                                   Advancer<T> advancer) {
+    static <T> void makeAssertions(List<T> expected, Advancer<T> advancer) {
         makeAssertions(expected, advancer, false);
     }
 

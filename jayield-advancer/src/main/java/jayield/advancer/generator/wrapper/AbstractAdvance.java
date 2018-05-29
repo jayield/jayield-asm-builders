@@ -1,8 +1,8 @@
 package jayield.advancer.generator.wrapper;
 
 import jayield.advancer.Advancer;
-import jayield.Yield;
-import jayield.boxes.BoolBox;
+import org.jayield.boxes.BoolBox;
+import org.jayield.Yield;
 
 import java.util.Iterator;
 
