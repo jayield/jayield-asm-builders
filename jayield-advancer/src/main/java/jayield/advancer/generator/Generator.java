@@ -8,7 +8,6 @@ import org.jayield.Traverser;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 
-import org.jayield.Query;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
@@ -70,13 +69,34 @@ public class Generator {
     }
 
     private static String getGeneratedFilename(SerializedLambda lambda, String outPath) {
-        return format("%s./%s___%s.class", outPath, getCaller(), lambda.getImplMethodName());
+        if (outPath.endsWith("/")) {
+            return format("%s%s___%s.class",
+                          outPath,
+                          removeInvalidChars(getCaller()),
+                          removeInvalidChars(lambda.getImplMethodName()));
+        }
+        return format("%s./%s___%s.class",
+                      outPath,
+                      removeInvalidChars(getCaller()),
+                      removeInvalidChars(lambda.getImplMethodName()));
     }
 
-    private static void writeClassToFile(String filename, byte[] targetBytes) throws IOException {
-        FileOutputStream fos = new FileOutputStream(filename);
-        fos.write(targetBytes);
-        fos.close();
+    public static void writeClassToFile(String filename, byte[] targetBytes) {
+        try {
+            FileOutputStream fos = new FileOutputStream(filename);
+            fos.write(targetBytes);
+            fos.close();
+        } catch (IOException e) {
+            System.out.println(filename);
+            e.printStackTrace();
+        }
+    }
+
+    private static String removeInvalidChars(String token) {
+        return token
+                .replace("<", "")
+                .replace("*", "")
+                .replace(">", "");
     }
 
     private static String getCaller() {

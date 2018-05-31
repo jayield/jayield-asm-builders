@@ -1,7 +1,5 @@
 package jayield.advancer;
 
-import org.jayield.IntQuery;
-import org.jayield.IntYield;
 import org.jayield.Query;
 import org.junit.Test;
 
@@ -26,15 +24,14 @@ public class AdvancerBaseTests {
                     {"a", "x", "v", "d", "g", "x", "j", "x", "y", "r", "y", "w", "y", "a", "e"};
             Supplier<Query<String>> sup = () -> Query.of(arrange).distinct();
             for (int i = 0; i < expected.length; i++) {
-                assertEquals(Advancer.from(sup.get().skip(i)).iterator().next(), expected[i]);
+                assertEquals(Advancer.iterator(sup.get().skip(i)).next(), expected[i]);
             }
         }
 
         @Test()
         public void testIndividuallyFirstOnEmpty() {
             String[] arrange = {};
-            boolean hasNext = Advancer.from(Query.of(arrange))
-                    .iterator()
+            boolean hasNext = Advancer.iterator(Query.of(arrange))
                     .hasNext();
             assertTrue(!hasNext);
         }
@@ -55,7 +52,7 @@ public class AdvancerBaseTests {
             Query<Integer> query = Query
                     .iterate(1, n -> n + 2)
                     .limit(LIMIT);
-            Iterator<Integer> iter = Advancer.from(query).iterator();
+            Iterator<Integer> iter = Advancer.iterator(query);
             for (int i = 0; i < LIMIT - 1; i++)
                 iter.next();
             int actual = iter.next();
@@ -69,8 +66,7 @@ public class AdvancerBaseTests {
                                      .filter(n -> n % 2 != 0)
                                      .map(Object::toString)
                                      .skip(2);
-            String actual = Advancer.from(nrs)
-                                            .iterator()
+            String actual = Advancer.iterator(nrs)
                                             .next();
             assertEquals(actual, "5");
         }
@@ -122,8 +118,7 @@ public class AdvancerBaseTests {
             List<Integer> actual = new ArrayList<>();
             Query<Integer> query = Query.of(arrange)
                                         .peek(item -> actual.add(item * 2));
-            int value = Advancer.from(query)
-                                        .iterator()
+            int value = Advancer.iterator(query)
                                         .next();
             assertEquals(value, 1);
             assertEquals(actual.size(), 1);

@@ -13,7 +13,7 @@ public class AdvancerIterator<T> implements Iterator<T> {
 
     @Override
     public boolean hasNext() {
-        return current != null || advancer.tryAdvance(item -> current = item);
+        return current != null || (advancer != null && advancer.tryAdvance(item -> current = item));
     }
 
     @Override

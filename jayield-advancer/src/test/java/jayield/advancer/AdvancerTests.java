@@ -12,6 +12,7 @@ import java.util.List;
 import static jayield.advancer.Advancer.from;
 import static jayield.advancer.TestUtils.makeAssertions;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 public class AdvancerTests {
 
@@ -171,6 +172,7 @@ public class AdvancerTests {
 
         from(query).tryAdvance(item -> first[0] = item);
 
+        assertNotNull(first[0]);
         assertEquals(2, first[0].intValue());
     }
 }

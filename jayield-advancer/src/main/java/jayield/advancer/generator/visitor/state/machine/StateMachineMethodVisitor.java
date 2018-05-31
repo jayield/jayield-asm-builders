@@ -177,7 +177,7 @@ public class StateMachineMethodVisitor extends TraverseMethodVisitor implements 
     @Override
     public void visitInsn(int opcode) {
         if (opcode == RETURN) {
-            super.visitLabel(endLabel);
+//            super.visitLabel(endLabel);
             finishState();
             super.visitLocalVariable(THIS, getTypeDescriptor(newOwner), null, startLabel, endLabel, getThisVar());
         }
@@ -198,6 +198,9 @@ public class StateMachineMethodVisitor extends TraverseMethodVisitor implements 
             super.visitInsn(ICONST_0);
             super.visitLdcInsn(state);
             super.visitInsn(IASTORE);
+        }
+        if(labels != null && (state + 1) == labels.length) {
+            super.visitLabel(endLabel);
         }
         super.visitInsn(RETURN);
         if (isACase) {

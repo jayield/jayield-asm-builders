@@ -1,9 +1,9 @@
 package jayield.advancer.generator;
 
-import jdk.internal.org.objectweb.asm.Type;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
 
 import java.lang.invoke.SerializedLambda;
 import java.util.function.Consumer;
@@ -19,7 +19,6 @@ import static jayield.advancer.generator.Constants.PRIMITIVE_TYPE_MAPPER;
 import static jayield.advancer.generator.Constants.SERIALIZED_LAMBDA;
 import static jayield.advancer.generator.InstrumentationUtils.ARRAY;
 import static jayield.advancer.generator.InstrumentationUtils.METHOD_PARAMETERS_END;
-import static jayield.advancer.generator.InstrumentationUtils.METHOD_PARAMETERS_START;
 import static jayield.advancer.generator.InstrumentationUtils.OBJECT;
 import static jayield.advancer.generator.InstrumentationUtils.OBJECT_DELIMITER;
 import static jayield.advancer.generator.InstrumentationUtils.VOID;
@@ -69,7 +68,7 @@ public class InitializeMethodGenerator implements Opcodes {
                                GET_CAPTURED_ARG_METHOD_SIGNATURE,
                                false);
             castersToArgumentType[i].accept(mv); // cast argument to the method's declared type
-            if((i + 1) < lambda.getCapturedArgCount()){
+            if ((i + 1) < lambda.getCapturedArgCount()) {
                 mv.visitIincInsn(2, 1);
             }
         }
@@ -110,6 +109,14 @@ public class InitializeMethodGenerator implements Opcodes {
     }
 
     private Consumer<MethodVisitor> typeCast(String token) {
-        return mv -> mv.visitTypeInsn(CHECKCAST, token);
+        return mv -> mv.visitTypeInsn(CHECKCAST, getTreatedToken(token));
+    }
+
+    private String getTreatedToken(String token) {
+        if(token.charAt(0) == ARRAY) {
+            return token;
+        }
+        return token.replace(String.valueOf(OBJECT), "")
+                              .replace(String.valueOf(OBJECT_DELIMITER), "");
     }
 }

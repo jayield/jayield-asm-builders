@@ -16,6 +16,9 @@ import static jayield.advancer.generator.Constants.CONSTRUCTOR_METHOD_NAME;
 import static jayield.advancer.generator.Constants.INT_ARRAY_DESCRIPTOR;
 import static jayield.advancer.generator.Constants.ITERATOR;
 import static jayield.advancer.generator.Constants.ITERATOR_DESCRIPTOR;
+import static jayield.advancer.generator.Constants.ITERATOR_FROM_QUERY;
+import static jayield.advancer.generator.Constants.ITERATOR_FROM_TRAVERSER;
+import static jayield.advancer.generator.Constants.QUERY_DESCRIPTOR;
 import static jayield.advancer.generator.Constants.STATE_FIELD_NAME;
 import static jayield.advancer.generator.Constants.TRAVERSER_DESCRIPTOR;
 import static jayield.advancer.generator.InstrumentationUtils.METHOD_PARAMETERS_END;
@@ -26,24 +29,6 @@ import static jayield.advancer.generator.InstrumentationUtils.getLoadCode;
 import static jayield.advancer.generator.InstrumentationUtils.getMethodDescriptor;
 
 public class ConstructorVisitor implements Opcodes {
-
-    private static void initializeState(MethodVisitor mv, String owner, List<String> ramifications) {
-        initializeState(mv, owner, STATE_FIELD_NAME);
-        ramifications.forEach(ramification -> initializeState(mv,
-                                                              owner,
-                                                              format("%s%s", STATE_FIELD_NAME, ramification)));
-    }
-
-    private static void initializeState(MethodVisitor mv, String owner, String fieldName) {
-        mv.visitVarInsn(ALOAD, 0);
-        mv.visitInsn(ICONST_1);
-        mv.visitIntInsn(NEWARRAY, T_INT);
-        mv.visitInsn(DUP);
-        mv.visitInsn(ICONST_0);
-        mv.visitInsn(ICONST_0);
-        mv.visitInsn(IASTORE);
-        mv.visitFieldInsn(PUTFIELD, owner, fieldName, INT_ARRAY_DESCRIPTOR);
-    }
 
     public static MethodVisitor generateConstructor(ClassVisitor visitor,
                                                     Iterable<LocalVariable> localVariables,
@@ -60,14 +45,14 @@ public class ConstructorVisitor implements Opcodes {
         emptyConstructor.visitInsn(RETURN);
         emptyConstructor.visitMaxs(1, 1);
 
-        if (Type.getArgumentTypes(desc).length > 1){
+        if (Type.getArgumentTypes(desc).length > 1) {
             MethodVisitor constructor = visitor.visitMethod(ACC_PUBLIC,
                                                             CONSTRUCTOR_METHOD_NAME + owner,
                                                             extractConstructorParameters(desc),
                                                             null,
                                                             null);
             callSuper(constructor);
-            initializeFields(constructor, localVariables, owner, argumentTypes.length -1);
+            initializeFields(constructor, localVariables, owner, argumentTypes.length - 1);
             initializeState(constructor, owner, ramifications);
             constructor.visitInsn(RETURN);
             constructor.visitMaxs(2, 3);
@@ -99,10 +84,10 @@ public class ConstructorVisitor implements Opcodes {
         while (iterator.hasNext()) {
             var = iterator.next();
             if (yieldIndex != parameterIndex - 1) {
-                if (var.getDesc().equals(TRAVERSER_DESCRIPTOR)) {
+                if (var.getDesc().equals(TRAVERSER_DESCRIPTOR) || var.getDesc().equals(QUERY_DESCRIPTOR)) {
                     LocalVariable variable = new LocalVariable(var.getName(),
                                                                var.getDesc(),
-                                                               TRAVERSER_DESCRIPTOR,
+                                                               var.getDesc(),
                                                                var.getStart(),
                                                                var.getEnd(),
                                                                var.getIndex());
@@ -115,18 +100,11 @@ public class ConstructorVisitor implements Opcodes {
         }
     }
 
-    private static void initializeIterator(MethodVisitor mv,
-                                           LocalVariable localVariable,
-                                           int parameterIndex,
-                                           String owner) {
-        mv.visitVarInsn(ALOAD, 0);
-        mv.visitVarInsn(getLoadCode(localVariable.getDesc()), parameterIndex);
-        mv.visitMethodInsn(INVOKESTATIC,
-                           getClassPath(Advancer.class),
-                           ITERATOR,
-                           getMethodDescriptor(ITERATOR_DESCRIPTOR),
-                           false);
-        mv.visitFieldInsn(PUTFIELD, owner, ITERATOR, ITERATOR_DESCRIPTOR);
+    private static void initializeState(MethodVisitor mv, String owner, List<String> ramifications) {
+        initializeState(mv, owner, STATE_FIELD_NAME);
+        ramifications.forEach(ramification -> initializeState(mv,
+                                                              owner,
+                                                              format("%s%s", STATE_FIELD_NAME, ramification)));
     }
 
     private static void initializeField(MethodVisitor mv,
@@ -136,5 +114,31 @@ public class ConstructorVisitor implements Opcodes {
         mv.visitVarInsn(ALOAD, 0);
         mv.visitVarInsn(getLoadCode(localVariable.getDesc()), parameterIndex);
         mv.visitFieldInsn(PUTFIELD, owner, localVariable.getName(), localVariable.getDesc());
+    }
+
+    private static void initializeIterator(MethodVisitor mv,
+                                           LocalVariable localVariable,
+                                           int parameterIndex,
+                                           String owner) {
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitVarInsn(getLoadCode(localVariable.getDesc()), parameterIndex);
+        mv.visitMethodInsn(INVOKESTATIC,
+                           getClassPath(Advancer.class),
+                           ITERATOR,
+                           localVariable.getDesc()
+                                        .equals(TRAVERSER_DESCRIPTOR) ? ITERATOR_FROM_TRAVERSER : ITERATOR_FROM_QUERY,
+                           false);
+        mv.visitFieldInsn(PUTFIELD, owner, ITERATOR, ITERATOR_DESCRIPTOR);
+    }
+
+    private static void initializeState(MethodVisitor mv, String owner, String fieldName) {
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitInsn(ICONST_1);
+        mv.visitIntInsn(NEWARRAY, T_INT);
+        mv.visitInsn(DUP);
+        mv.visitInsn(ICONST_0);
+        mv.visitInsn(ICONST_0);
+        mv.visitInsn(IASTORE);
+        mv.visitFieldInsn(PUTFIELD, owner, fieldName, INT_ARRAY_DESCRIPTOR);
     }
 }

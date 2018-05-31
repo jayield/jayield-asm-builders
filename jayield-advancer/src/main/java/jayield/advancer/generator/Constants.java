@@ -1,5 +1,6 @@
 package jayield.advancer.generator;
 
+import org.jayield.Query;
 import org.jayield.Traverser;
 import org.jayield.Yield;
 import jayield.advancer.Advancer;
@@ -36,6 +37,7 @@ public class Constants implements Opcodes {
     public static final String INTEGER_DESCRIPTOR = getTypeDescriptor(Integer.class);
     public static final String OBJECT_DESCRIPTOR = getTypeDescriptor(Object.class);
     public static final String STRING_DESCRIPTOR = getTypeDescriptor(String.class);
+    public static final String QUERY_DESCRIPTOR = getTypeDescriptor(Query.class);
     public static final String YIELD_DESCRIPTOR = getTypeDescriptor(Yield.class);
 
     public static final String SERIALIZED_LAMBDA = getClassPath(SerializedLambda.class);
@@ -52,11 +54,15 @@ public class Constants implements Opcodes {
     public static final String INT_ARRAY_DESCRIPTOR = getArrayTypeDescriptor(InstrumentationUtils.INTEGER);
     public static final String OBJECT_ARRAY_DESCRIPTOR = getArrayTypeDescriptor(OBJECT_DESCRIPTOR);
 
-    public static final String INT_BOX_METHOD_DESCRIPTOR = getMethodDescriptor(INTEGER_DESCRIPTOR, valueOf(InstrumentationUtils.INTEGER));
+    public static final String ITERATOR_FROM_TRAVERSER = getMethodDescriptor(ITERATOR_DESCRIPTOR, TRAVERSER_DESCRIPTOR);
+    public static final String ITERATOR_FROM_QUERY = getMethodDescriptor(ITERATOR_DESCRIPTOR, QUERY_DESCRIPTOR);
+    public static final String INT_BOX_METHOD_DESCRIPTOR = getMethodDescriptor(INTEGER_DESCRIPTOR,
+                                                                               valueOf(InstrumentationUtils.INTEGER));
     public static final String INITIALIZE_METHOD_DESCRIPTOR = getMethodDescriptor(Advancer.class,
-                                                                                   SerializedLambda.class);
+                                                                                  SerializedLambda.class);
     public static final String GET_CAPTURED_ARG_METHOD_SIGNATURE = getMethodDescriptor(OBJECT_DESCRIPTOR,
-                                                                                        INT_DESCRIPTOR);
+                                                                                       INT_DESCRIPTOR);
+
     public static final String TRY_ADVANCE_METHOD_DESC = getMethodDescriptor(BOOLEAN, YIELD_DESCRIPTOR);
     public static final String YIELD_METHOD_DESCRIPTION = getMethodDescriptor(VOID, OBJECT_DESCRIPTOR);
     public static final String ADVANCE_METHOD_DESC = getMethodDescriptor(VOID, YIELD_DESCRIPTOR);
@@ -65,6 +71,7 @@ public class Constants implements Opcodes {
                                                                               STRING_DESCRIPTOR,
                                                                               OBJECT_ARRAY_DESCRIPTOR);
     public static final String BOOLEAN_SUPPLIER = getMethodDescriptor(BOOLEAN);
+
 
     public static final String GET_CAPTURED_ARG_METHOD_NAME = "getCapturedArg";
     public static final String TRY_ADVANCE_METHOD_NAME = "tryAdvance";
