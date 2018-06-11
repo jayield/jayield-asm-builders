@@ -83,10 +83,13 @@
 %====================================================================
 % To aggregate multiple figures in a single one with subfigures
 \usepackage{subfigure}
+
 \lstset{
-  numbers=none,
+  numbers=left,
+  frame = tb,
+  language=Java,
+  escapeinside={(*@}{@*)}
 }
-\lstset{escapeinside={(*@}{@*)}}
 
 % To have text wrapping figures
 \usepackage{wrapfig}
@@ -168,7 +171,7 @@
 % ---------------------------------------------------------------------------------
 % TEX CHAPTERS:
 % syntax: \chapterfile{file}
-\chapterfile{chapter1}
+\chapterfile{chapter1/chapter1}
 %\chapterfile{chapter2}
 %\chapterfile{chapter3}
 
@@ -239,7 +242,7 @@
 %  Print Bibliography
 % ----------------------------------------------------------------------
 %%
-%\cleardoublepage
+\cleardoublepage
 
 % Include all references in .bib file, even non-cited ones...
 %\nocite{*}
