@@ -1,6 +1,6 @@
-void withStreams() {
-    Basket basket = new Basket();
-    basket.fruits.stream()
+public static Stream<String> getOrangeFruitStream(Basket basket) {
+    return basket.fruits.stream()
                     .filter(current -> current.color.equals("orange"))
-                    .forEach(current -> System.out.println(current.name));
+                    .map(current -> current.name);
+
 }

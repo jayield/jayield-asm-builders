@@ -1,10 +1,11 @@
-void withIterator() {
-    Basket basket = new Basket();
+public static List<String> getOrangeFruitList(Basket basket) {
     Iterator<Fruit> iterator = basket.fruits.iterator();
+    List<String> result = new ArrayList<Fruit>();
     while (iterator.hasNext()) {
         Fruit current = iterator.next();
         if (current.color.equals("orange")) {
-            System.out.println(current.name);
+            result.add(current.name);
         }
     }
+    return result;
 }

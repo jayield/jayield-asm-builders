@@ -1,0 +1,150 @@
+\section{Query}
+
+A Query represents a sequence of elements supporting sequential operations in Jayield. This class implements all the utility methods with the same name, semantics and behaviour as those provided by Java's Stream. The traversal methods are specified by two distinct interfaces, Advancer which allows the user to express how to traverse a sequence item by item and Traverser that is used to express how to bulk traverse a sequence. Both of these are functional Interfaces and both use a third functional interface to process through elements, Yield. Yield is equivalent to the Java Consumer, however, to reinforce the role of this functional interface as the element generator, it was decided to create a new one.
+\begin{lstlisting}[caption={Interfaces},captionpos=b]
+interface Traverser <T> { void traverse (Yield <T> yield );}
+interface Advancer <T> { boolean tryAdvance (Yield <T> yield );}
+interface Yield <T> { void ret(T item );}
+\end{lstlisting}
+
+Query provides a way for the user to define new operations through the then function.
+\begin{lstlisting}[caption={Traversal function generator},captionpos=b]
+<R> Query<R> then(Function<Query<T>, Traverser<R>> next)
+\end{lstlisting}
+This method has a function parameter "next", which receives the previous (downstream) sequence and returns a new implementation of a traversal function, a Traverser.
+\lstinputlisting[caption={Advancer},label={lst:advancer-simple}]{./Chapters/chapter1/listings/Advancer.java}
+
+ The implementation for the Advancer (i.e. the individual traverser) will only be generated if requested to the Advancer interface as it is not always necessary to traverse. To do so we can call one of the two from methods provided in Advancer as shown in the~\ref{lst:advancer-simple} listing.
+
+\newpage
+Going back to the filterOdd example, if we wanted to implement it we would do it in one of the following ways.
+\begin{lstlisting}[caption={filterOdd using Query and Traverser},captionpos=b]
+public class App{
+	static <U> Traverser <U> filterOdd (Query<U> prev) {
+		return yield -> {
+			final boolean [] isOdd = { false };
+			prev.traverse(item -> {
+				if(isOdd[0]) yield.ret(item);
+				isOdd[0] = !isOdd[0];
+			});
+		};
+	}
+
+	public static void main(String[] args) {
+		Query.of(1, 2, 3, 4)
+            .map(i -> i + 4))
+            .then(App::filterOdd)
+            .forEach(System.out::println);
+	}
+}
+\end{lstlisting}
+
+\begin{lstlisting}[caption={filterOdd using Advancer},captionpos=b]
+public class App{
+	static <U> Advancer <U> filterOdd (Advancer<U> prev ) {
+		return yield -> {
+			if (!prev.tryAdvance(item -> {})) return false;
+				return prev.tryAdvance(yield);
+		};
+	}
+
+	public static void main(String[] args) {
+        Query<Integer> query = Query.of(1, 2, 3, 4)
+                                  .map(i -> i + 4);
+        Advancer<Integer> filterOdd = filterOdd(Advancer.from(query));
+        while (filterOdd.tryAdvance(System.out::println));
+	}
+}
+\end{lstlisting}
+
+This approach is less verbose, does not break fluent query invocation and if we call then we will be bulk traversing efficiently without needing to define how to traverse item by item.
+
+
+\section{Approaches}
+To achieve the expected result a pseudo-solution was thought of, assuming one of the following is true:
+\begin{itemize}
+\item A call to source.traverse(...) is made
+\item A call to yield.ret(...) is made
+\end{itemize}
+
+
+Assuming any of these are true, we would generate an Advancer doing the following:
+\begin{itemize}
+\item Instead of calling source.traverse(...) we would need to call source.tryAdvance(...)
+\item When calling yield.ret(...) we would register that an element has been found that meets the criteria.
+\item The call to source.tryAdvance(...) is made like so: while(noElementFound \&\& source.tryAdvance(...))
+\end{itemize}
+
+So, lets say we have the following definition for a map Traverser:
+\begin{lstlisting}[caption={Map Traverser},label={lst:map-traverser},captionpos=b]
+<T, R> Traverser<R> map(Query<T> source, Function<T, R> mapper) {
+	return yield -> {
+    	source.traverse(e -> yield.ret(mapper.apply(e)));
+	};
+}
+\end{lstlisting}
+
+Given the bulk traversal definition of map in listing~\ref{lst:map-traverser}, then the resulting map which implements the individual traversal is shown in listing~\ref{lst:map-advancer}
+
+\begin{lstlisting}[caption={Map Advancer},label={lst:map-advancer},captionpos=b]
+<T, R> Advancer<R> map(Query<T> source, Function<T, R> mapper) {
+	(*@\textcolor{blue}{boolean[] noElementFound = new boolean[] \{true\};}@*)
+	return yield -> {
+		(*@\textcolor{blue}{noElementFound[0] = true;}@*)
+		while(noElementFound[0] && source.tryAdvance(e -> {
+				yield.ret(mapper.apply(e)));
+				(*@\textcolor{blue}{noElementFound[0] = false;}@*)
+			});
+		(*@\textcolor{blue}{return noElementFound[0] == false;}@*)
+	};
+}
+\end{lstlisting}
+
+With that said, there are corner cases that are not so easily mapped as is the case of the flatMap operation which traverses over multiple sequences, these cases need a different approach.
+
+Nevertheless, following the suggested approach we will need to generate code at runtime, to do this we will use ASM, a library for java bytecode manipulation at runtime. In order to read the bytecode via ASM we first need to give it (via the ClassReader) the actual bytecode of the Traverser. The problem is, if the Traverser was generated using a lambda function, that the lambda's class is generated at runtime via the LambdaMetaFactory class and therefore the normal method of getting the bytecode does not work, aside from that we also needed to get any fields the Traverser's class may have, in the case of the lambda, they would be captured arguments.
+
+To solve this issue, two paths were found\citep{stackoverflowlambdacode}, the use of SerializedLambda\citep{serializedlambda} or the use of another library called Bytebuddy.
+
+\section{SerializedLambda}
+
+If the lambda we are trying to read implements an interface that extends Serializable, the LambdaMetaFactory class will generate a private method called 
+"writeReplace" which provides an instance of the class SerializedLambda. This instance can be used to retrieve both the actual static method that was generated for this lambda as well as get the captured arguments. Being able to reach the lambda's method would allowed us to instrument it, to do so, we used a custom ClassVisitor that copies the original declaring class of the lambda as well as making some changes along the way, such as:
+\begin{itemize}
+\item The name of the class would now be the name of the lambda's method.
+\item Each call to a method on the declared class would now be a call to the generated class, due to calls to private methods.
+\item The return type of the lambda's method would now be boolean instead of void, to be coherent with the Advancer Interface.
+\item The lambda's method would now call tryAdvance instead of traverse and return the result of tryAdvance as well.
+\end{itemize}
+
+To obtain an Advancer out of the generated class all we would need to do now would be:
+\begin{itemize}
+\item Retrieve the original lambda's captured arguments
+\item Retrieve the generated method from the new class
+\item Apply the approach defined above.
+\end{itemize}
+
+Which would result in something like this:
+\begin{lstlisting}[caption={Generated Advancer},captionpos=b]
+final BoolBox elementFound = new BoolBox();
+Method generatedTryAdvance = getTryAdvance(...);
+Advancer generated =  y -> {
+	elementFound.reset();
+	Yield<R> wrapper = wr -> {
+		y.ret(wr);
+		elementFound.set();
+	};
+	arguments[arguments.length - 1] = wrapper;
+	while(elementFound.isFalse() && (Boolean) generatedTryAdvance.invoke(newClass, arguments));
+	return elementFound.isTrue();
+};
+\end{lstlisting}
+
+This solution makes use of a wrapper over the yield received as parameter to register when an element is found, this wrapper is then provided as the last argument in an argument array for the generated method, with the first parameters being those captured by the lambda. 
+
+A downside to this approach is that it would mean the Traverser functional interface would need to extend Serializable, which would be otherwise unnecessary.
+
+
+\section{Bytebuddy}
+
+This approach was not as thoroughly investigated as the previous one, with that said, the main difference between the two is the way the class of the lambda and the arguments are obtained. To use this approach we need to add the ByteBuddyAgent to the class path and to call the install static method it provides to get a hold of it's implementation of the Instrumentation Interface. We are then able to obtain the class of the Traverser we are trying to instrument, and this is where the main difference resides, we get the class directly not a method like in the SerializedLambda approach. This class has the fields, that the lambda captured, and an implementation of the traverse method. Which makes it seem like a similar approach to the SerializedLambda is possible, we would just make use of a custom ClassVisitor that would generate an Advancer from the Traverser implementation and then return it.

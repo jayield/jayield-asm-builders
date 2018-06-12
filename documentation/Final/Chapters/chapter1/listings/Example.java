@@ -5,7 +5,8 @@ public class Example {
 	static class OddFilter <T> extends AbstractSpliterator <T> { (*@\label{line:oddFilter}@*)
 		final Consumer <T> doNothing = item -> {};
 		final Spliterator <T> source ;
-		public Odd (Spliterator <T> source ) {
+		boolean isOdd = false;
+		public Odd (Spliterator <T> source) {
 			super (odd(source.estimateSize()), source.characteristics());
 			this.source = source;
 		}
@@ -14,13 +15,21 @@ public class Example {
 			if (!source.tryAdvance(doNothing)) return false ;
 				return source.tryAdvance(action);
 		}
+		@Override
+		public void forEachRemaining(Consumer<? super T> action) {
+			source.forEachRemaining(item -> {
+				if(isOdd){
+					action.accept(item);
+				}
+				isOdd = !isOdd;
+			});
+		}
 		private static long odd( long l) {
 			return l == Long.MAX_VALUE ? l : (l +1)/2;
 		}
 	}
 	public static void main(String[] args) {
-		filterOdd(Stream.of(new Integer[]{1, 2, 3, 4})
-            .map(i -> i + 4))
+		filterOdd(getOrangeFruitStream(new Basket()))
             .forEach(System.out::println);
 	}
 }
