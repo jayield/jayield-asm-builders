@@ -41,8 +41,8 @@
 	12pt,		% (*) 12pt, 11pt, 10pt - use font size
 	a4paper,	% the paper size/format
 	utf8,			% (*) utf8, latin1	- Text encoding: Linux, Mac or Windows
-	hyperref = true,  % Hyperlinks in citations: true(*) false
-	listof=totoc
+	hyperref,  % Hyperlinks in citations: true(*) false
+	listof
 	]{thesisisel} 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -146,17 +146,17 @@
 %% All the names inside braces below sould correspond to a file
 %%     with extension ".tex" and located in the "Chapters" folder
 %%------------------------------------------------------------
-%\dedicatoryfile{dedicatory} 
+\dedicatoryfile{dedicatory} 
 
 % Acknowledgments text. Will only be considered for final documents,
 % i.e., "bsc", "msc" and "phd", otherwise, it will be silently ignored
-%\acknowledgementsfile{acknowledgements}
+\acknowledgementsfile{acknowledgements}
 
 % Resume/summary text in Portuguese
-%\ptabstractfile{resumo}
+\ptabstractfile{resumo}
 
 % Resume/summary text in English
-%\enabstractfile{abstract}
+\enabstractfile{abstract}
 
 %%------------------------------------------------------------
 % The Table of Contents is always printed. The other lists may be omited.
@@ -165,15 +165,15 @@
 % Conditionally insert List of Figures, Tables and Code Listings
 %\addlisttofrontmatter{\conditionalLoF} 	% The List of Figures. 
 %\addlisttofrontmatter{\conditionalLoT} 	% The List of Tables. 
-%\addlisttofrontmatter{\conditionalLoL}	% The List of Code Listings.
+\addlisttofrontmatter{\conditionalLoL}	% The List of Code Listings.
 %\addlisttofrontmatter{\printnoidxglossary} % The List if Abreviations / Glossary. Comment to omit.
 
 % ---------------------------------------------------------------------------------
 % TEX CHAPTERS:
 % syntax: \chapterfile{file}
 \chapterfile{chapter1/chapter1}
-%\chapterfile{chapter2}
-%\chapterfile{chapter3}
+\chapterfile{chapter2/chapter2}
+%\chapterfile{chapter3/chapter3}
 
 % Text appendixes. Comment if not needed
 % sintax: \appendixfile{file}
@@ -226,11 +226,11 @@
 %
 %% Always print the table of contents
 %\addtocontents{toc}{\protect\setcounter{tocdepth}{-1}}
-%\tableofcontents
+\tableofcontents
 %\addtocontents{toc}{\protect\setcounter{tocdepth}{3}}
 %
 %% Print other lists of contents according to instructions given above
-%\printotherlists 
+\printotherlists 
 %
 % ----------------------------------------------------------------------
 %  Print Document Chapters

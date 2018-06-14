@@ -1,0 +1,40 @@
+\chapter{Alternatives}
+
+In order to further understand the context of this project we will be describing some alternatives to the Java 8 Stream API as well as discussing their advantages and disadvantages.
+
+\section{Guava}
+
+Guava~\citep{guava} was for some years the library most programmers defaulted to when looking for Functional programming utilities in Java, until Java 8 arrived. To achieve this functionality the Guava library provides their own sequential type, FluentIterable, which provides a way to chain operations together like Stream does.
+
+\newpage
+In listing~\ref{lst:guava} we show how the previous example, where we obtain the names of all the orange fruits, could be achieved using the Guava library and lambda functions.
+
+\lstinputlisting[caption={Guava's approach},label={lst:guava}]{./Chapters/chapter2/listings/GuavaExample.java}
+
+Just like the Stream approach, here we can specify our intentions without traversing the sequence. When it comes to extending FluentIterables's operations even further however, the programmer has to implement an Iterator, like with Streams one would have to implement a Spliterator. So if presented with the same outcome as before, an implementation of filterOdd would look something like what is shown in listing~\ref{lst:iterator-filterOdd} which results in a quite verbose approach and not what we are aiming to achieve.
+
+\lstinputlisting[caption={Guava's approach},label={lst:iterator-filterOdd}]{./Chapters/chapter2/listings/FilterOdd.java}
+
+\section{StreamEx}
+
+StreamEx~\citep{streamex} is the only library, of those discussed in this document, that provides function based extensibility, instead of requiring the implementation of a specific type. For instance, looking back at our examples, to implement a filterOdd operation we would only need to define what is needed for the tryAdvance method described in listing~\ref{lst:spliterator} which iterates over two items whenever the downstream request one item. Listing~\ref{lst:streamex-example} shows an example.
+
+\newpage
+\lstinputlisting[caption={StreamEx's approach},label={lst:streamex-example}]{./Chapters/chapter2/listings/StreamExExample.java}
+
+This approach is less verbose than the one implemented by Guava and Java 8's Streams. However StreamEx's implementation still has part of the drawbacks presented by Java 8's Stream API:
+\begin{itemize}
+\item Extensibility of the API breaks the fluent API.
+Even though the extension of the API requires less code, it is not possible to chain together with an already existing StreamEx instance, which breaks the fluent API provided by this library.
+\item The flatMap implementation breaks any short-circuiting operations.
+\end{itemize}
+
+
+
+\section{JOOL and Cyclops}
+
+JOOL~\citep{jool} and Cyclops~\citep{cyclops} are equivalent to Stream. Both these libraries provide their own sequential types, Seq for JOOL and ReactiveSeq for Cyclops. They both expand the catalogue of operations when comparing with Stream, but when it comes to extending either API the programmer still needs to implement a Spliterator just like the one presented in listing~\ref{lst:spliterator}.
+
+\section{Vavr}
+
+VAVR~\citep{vavr} provides its own sequential type, Seq, and like Guava, to extend its API the programmer needs to implement an Iterator which makes impossible for fluent API extensions. This library provides the widest set of functional data structures and operations from the libraries we studied and is one of most popular libraries on Github, second only to Guava. It provides an implementation of flatMap that does not break a short-circuiting operation on an infinite sequence. 

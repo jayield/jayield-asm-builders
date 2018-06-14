@@ -1,3 +1,5 @@
+\chapter{Solution}
+
 \section{Query}
 
 A Query represents a sequence of elements supporting sequential operations in Jayield. This class implements all the utility methods with the same name, semantics and behaviour as those provided by Java's Stream. The traversal methods are specified by two distinct interfaces, Advancer which allows the user to express how to traverse a sequence item by item and Traverser that is used to express how to bulk traverse a sequence. Both of these are functional Interfaces and both use a third functional interface to process through elements, Yield. Yield is equivalent to the Java Consumer, however, to reinforce the role of this functional interface as the element generator, it was decided to create a new one.
