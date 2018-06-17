@@ -1,0 +1,1 @@
+name -> System.out.println(name)

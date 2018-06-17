@@ -1,68 +1,62 @@
 \chapter{Solution}
 
-\section{Query}
+In this chapter we will present the Jayield solution, going through it's different components and understanding how they work and interact with each other.
+\section{Yield}
 
-A Query represents a sequence of elements supporting sequential operations in Jayield. This class implements all the utility methods with the same name, semantics and behaviour as those provided by Java's Stream. The traversal methods are specified by two distinct interfaces, Advancer which allows the user to express how to traverse a sequence item by item and Traverser that is used to express how to bulk traverse a sequence. Both of these are functional Interfaces and both use a third functional interface to process through elements, Yield. Yield is equivalent to the Java Consumer, however, to reinforce the role of this functional interface as the element generator, it was decided to create a new one.
-\begin{lstlisting}[caption={Interfaces},captionpos=b]
-interface Traverser <T> { void traverse (Yield <T> yield );}
-interface Advancer <T> { boolean tryAdvance (Yield <T> yield );}
-interface Yield <T> { void ret(T item );}
-\end{lstlisting}
+Yield is the interface that represents the element generator in our solution. It's interface is equivalent to a Java Consumer, however, it has a few key differences. Listing~\ref{lst:yield} presents the definition of the Yield interface.
 
-Query provides a way for the user to define new operations through the then function.
-\begin{lstlisting}[caption={Traversal function generator},captionpos=b]
-<R> Query<R> then(Function<Query<T>, Traverser<R>> next)
-\end{lstlisting}
-This method has a function parameter "next", which receives the previous (downstream) sequence and returns a new implementation of a traversal function, a Traverser.
-\lstinputlisting[caption={Advancer},label={lst:advancer-simple}]{./Chapters/chapter1/listings/Advancer.java}
+\lstinputlisting[caption={Yield},label={lst:yield}]{./Chapters/chapter3/listings/Yield.java}
 
- The implementation for the Advancer (i.e. the individual traverser) will only be generated if requested to the Advancer interface as it is not always necessary to traverse. To do so we can call one of the two from methods provided in Advancer as shown in the~\ref{lst:advancer-simple} listing.
+As we can see Yield has two methods:
+\begin{itemize}
+\item bye(), which is used to short circuit the traversal of a sequence.
+\item ret(T item), which is the method used to define what to do with each item that a sequence returns when traversing it.
+\end{itemize}
+
+Lets say we were traversing a sequence of Fruit names and we would like to write down their names, listing~\ref{lst:yield-example} shows what the Yield lambda to achieve this looks like.
+
+\lstinputlisting[caption={Yield example},label={lst:yield-example}]{./Chapters/chapter3/listings/YieldExample.java}
+
+\section{Traverser}
+
+Traverser is an interface that is used to define ways of bulk travesing a sequence. To that end it provides the method traverse which receives a Yield function as argument to consume elements as they are traversed. Listing~\ref{lst:traverser} shows the definition of the Traverser interface.
+
+\lstinputlisting[caption={Traverser},label={lst:traverser}]{./Chapters/chapter3/listings/Traverser.java}
+
+Looking at some examples on how to use this interface, if we have an upstream sequence of Fruits, listing~\ref{lst:traverser-map-example} shows of how to transform such a sequence into a sequence of Fruit's names.
+
+\lstinputlisting[caption={Traverser map to name example},label={lst:traverser-map-example}]{./Chapters/chapter3/listings/TraverserMapExample.java}
 
 \newpage
-Going back to the filterOdd example, if we wanted to implement it we would do it in one of the following ways.
-\begin{lstlisting}[caption={filterOdd using Query and Traverser},captionpos=b]
-public class App{
-	static <U> Traverser <U> filterOdd (Query<U> prev) {
-		return yield -> {
-			final boolean [] isOdd = { false };
-			prev.traverse(item -> {
-				if(isOdd[0]) yield.ret(item);
-				isOdd[0] = !isOdd[0];
-			});
-		};
-	}
+We can also define new sequences with the Traverser interface, lets say we want to generate a sequence of Fruits, listing~\ref{lst:traverser-generator-example} shows an example of how to do it.
 
-	public static void main(String[] args) {
-		Query.of(1, 2, 3, 4)
-            .map(i -> i + 4))
-            .then(App::filterOdd)
-            .forEach(System.out::println);
-	}
-}
-\end{lstlisting}
+\lstinputlisting[caption={Traverser as sequence generator},label={lst:traverser-generator-example}]{./Chapters/chapter3/listings/TraverserAsSequenceGenerator.java}
 
-\begin{lstlisting}[caption={filterOdd using Advancer},captionpos=b]
-public class App{
-	static <U> Advancer <U> filterOdd (Advancer<U> prev ) {
-		return yield -> {
-			if (!prev.tryAdvance(item -> {})) return false;
-				return prev.tryAdvance(yield);
-		};
-	}
+\section{Query}
 
-	public static void main(String[] args) {
-        Query<Integer> query = Query.of(1, 2, 3, 4)
-                                  .map(i -> i + 4);
-        Advancer<Integer> filterOdd = filterOdd(Advancer.from(query));
-        while (filterOdd.tryAdvance(System.out::println));
-	}
-}
-\end{lstlisting}
+Looking now at the Query class in Jayield, it represents a sequence of elements supporting sequential operations. This class implements all the utility methods with the same name, semantics and behaviour as those provided by Java's Stream. This class has an Traverser field that represents the current sequence. It also provides a way for the user to define new operations through the then method (listing~\ref{lst:query-then}).
 
-This approach is less verbose, does not break fluent query invocation and if we call then we will be bulk traversing efficiently without needing to define how to traverse item by item.
+\lstinputlisting[caption={Query then method},label={lst:query-then}]{./Chapters/chapter3/listings/QueryThen.java}
+
+ This method receives a Function as parameter that defines the way to transform the upstream sequence (represented by a Query) into the new traversal function, a Traverser. This function is similar to the method presented in the previous section in listing~\ref{lst:traverser-map-example}, with that in listing~\ref{lst:traverser-map-example} we receive a Traverser as a parameter and the Function parameter in next receives a Query. An example of how to use this method can be looked at back in Chapter 1's listing~\ref{lst:jayield-filterOdd}.
+
+\section{Advancer}
+
+The Advancer is the interface that represents our individual traverser and the main focus of the use case of we are implementing.
+
+The implementation for the Advancer (i.e. the individual traverser) will only be generated if requested to the Advancer interface as it is not always necessary to traverse. To do so we can call one of the two from methods provided in Advancer as shown in the~\ref{lst:advancer} listing.
+
+\lstinputlisting[caption={Advancer},label={lst:advancer}]{./Chapters/chapter3/listings/Advancer.java}
+
+This interface provides a way for the programmer to individually traverse a sequence, either through the tryAdvance method or through the use of an iterator. For instance, if we wanted to print the name of the first Fruit in a sequence we could take the approach shown in listing ~\ref{lst:advancer-example} which will print the first fruit's name, and only the first, if it exists.
+
+\lstinputlisting[caption={Advancer example},label={lst:advancer-example}]{./Chapters/chapter3/listings/AdvancerExample.java}
+
+So, the question now is, how do we generate an Advancer from a Query or from a Traverser?
 
 
-\section{Approaches}
+\subsection{Approach}
+
 To achieve the expected result a pseudo-solution was thought of, assuming one of the following is true:
 \begin{itemize}
 \item A call to source.traverse(...) is made
@@ -106,12 +100,15 @@ With that said, there are corner cases that are not so easily mapped as is the c
 
 Nevertheless, following the suggested approach we will need to generate code at runtime, to do this we will use ASM, a library for java bytecode manipulation at runtime. In order to read the bytecode via ASM we first need to give it (via the ClassReader) the actual bytecode of the Traverser. The problem is, if the Traverser was generated using a lambda function, that the lambda's class is generated at runtime via the LambdaMetaFactory class and therefore the normal method of getting the bytecode does not work, aside from that we also needed to get any fields the Traverser's class may have, in the case of the lambda, they would be captured arguments.
 
-To solve this issue, two paths were found\citep{stackoverflowlambdacode}, the use of SerializedLambda\citep{serializedlambda} or the use of another library called Bytebuddy.
+\subsection{SerializedLambda}
 
-\section{SerializedLambda}
+You may have noticed in listing~\ref{lst:traverser} that the Traverser interface extends from Serializable, the fact is, we actually need the Traverser to extend Serializable in order to read its code. This solution was found in an answer to a question in Stackoverflow\citep{stackoverflowlambdacode},which makes use of the SerializedLambda\citep{serializedlambda}.
 
-If the lambda we are trying to read implements an interface that extends Serializable, the LambdaMetaFactory class will generate a private method called 
-"writeReplace" which provides an instance of the class SerializedLambda. This instance can be used to retrieve both the actual static method that was generated for this lambda as well as get the captured arguments. Being able to reach the lambda's method would allowed us to instrument it, to do so, we used a custom ClassVisitor that copies the original declaring class of the lambda as well as making some changes along the way, such as:
+The reason for this is that, if the lambda we are trying to read implements an interface that extends Serializable, the LambdaMetaFactory class will generate a private method called "writeReplace" which provides an instance of the class SerializedLambda. This instance can be used to retrieve both the actual method that was generated for this lambda as well as get the captured arguments and being able to reach the lambda's method allow us to instrument it.
+
+\subsection{Visitors}
+
+Now having access to the lambda's code, it was time to instrument it in order to transform the Traverser into an Advancer. To do so, we started by using a custom ClassVisitor that copies the original declaring class of the lambda as well as making some changes along the way, such as:
 \begin{itemize}
 \item The name of the class would now be the name of the lambda's method.
 \item Each call to a method on the declared class would now be a call to the generated class, due to calls to private methods.
@@ -127,7 +124,7 @@ To obtain an Advancer out of the generated class all we would need to do now wou
 \end{itemize}
 
 Which would result in something like this:
-\begin{lstlisting}[caption={Generated Advancer},captionpos=b]
+\begin{lstlisting}[caption={Generated Advancer},captionpos=b, label={lst:advanger-gen1}]
 final BoolBox elementFound = new BoolBox();
 Method generatedTryAdvance = getTryAdvance(...);
 Advancer generated =  y -> {
@@ -142,11 +139,28 @@ Advancer generated =  y -> {
 };
 \end{lstlisting}
 
-This solution makes use of a wrapper over the yield received as parameter to register when an element is found, this wrapper is then provided as the last argument in an argument array for the generated method, with the first parameters being those captured by the lambda. 
+This solution makes use of a wrapper over the yield, received as parameter, to register when an element is found, this wrapper is then provided as the last argument in an argument array for the generated method, with the first parameters being those captured by the lambda. 
 
-A downside to this approach is that it would mean the Traverser functional interface would need to extend Serializable, which would be otherwise unnecessary.
+\subsection{State Machine}
 
+This approach however, as said before, has flaws and the above described solution does not work for every case. One of the first issues identified was the case functions that would generate more elements than the original sequence, that being either, a duplicate function or a generator of values. Lets look at listing~\ref{lst:traverser-dup} as an example of an traverser that duplicates values.
 
-\section{Bytebuddy}
+\lstinputlisting[caption={Duplicate Traverser function},label={lst:traverser-dup}]{./Chapters/chapter3/listings/TraverserDup.java}
 
-This approach was not as thoroughly investigated as the previous one, with that said, the main difference between the two is the way the class of the lambda and the arguments are obtained. To use this approach we need to add the ByteBuddyAgent to the class path and to call the install static method it provides to get a hold of it's implementation of the Instrumentation Interface. We are then able to obtain the class of the Traverser we are trying to instrument, and this is where the main difference resides, we get the class directly not a method like in the SerializedLambda approach. This class has the fields, that the lambda captured, and an implementation of the traverse method. Which makes it seem like a similar approach to the SerializedLambda is possible, we would just make use of a custom ClassVisitor that would generate an Advancer from the Traverser implementation and then return it.
+For this Traverser, the solution described above would not work as it would not stop when the first element was found nor would it return to the same point when the next element was requested. To solve this issue two things were necessary, a state machine and external iteration.
+
+The first approach to this issue was based on declaring the end of a state, and the beginning of the next, every time a yield.ret(...) was made. This would translate to something like what is shown in listing~\ref{lst:advancer-dup-ifs}.
+
+\lstinputlisting[caption={Duplicate Advancer translation with if State Machine},label={lst:advancer-dup-ifs}]{./Chapters/chapter3/listings/AdvancerDupIfs.java}
+
+As you can see there are a few key differences:
+\begin{itemize}
+\item the instrumented yield operation now isolates yield.ret() calls into different states
+\item the validValue field, which lets us know if we need to get a new value or if the old one still needs to be used in another state.
+\end{itemize}
+
+This solution had it's problems aswell, for instance, if a yield return was made inside an if condition it would have to take that into account which would lead to even more complicated translations.
+
+At this moment we took a step back to re-evaluate and it was then that we started to look into Jon Skeet's C\# in Depth\citep{csharpindepth}, chapter 6. The approach described here, makes use of a switch case as well as labels, with the labels being the delimiters between the end of a state and the beginning of a new one. This approach requires some pre-processing of the Traverser code, to know how many states there will be in the switch as in Java to declare a switch we need to know in advance how many states there will be, this approach was also applied to value generating lambdas, as the same principles apply. Listing~\ref{lst:advancer-dup-switch} shows an example of the translation of the dup operation.
+
+\lstinputlisting[caption={Duplicate Advancer translation with Switch based State Machine},label={lst:advancer-dup-switch}]{./Chapters/chapter3/listings/AdvancerDupSwitch.java}

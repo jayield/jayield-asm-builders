@@ -1,0 +1,1 @@
+<R> Query<R> then(Function<Query<T>, Traverser<R>> next)

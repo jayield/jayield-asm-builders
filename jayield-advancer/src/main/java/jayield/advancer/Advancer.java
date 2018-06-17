@@ -7,6 +7,7 @@ import org.jayield.Yield;
 
 import java.io.Serializable;
 import java.util.Iterator;
+import java.util.function.Function;
 
 public interface Advancer<T> extends Serializable {
 
@@ -30,7 +31,10 @@ public interface Advancer<T> extends Serializable {
         return new AdvancerIterator<>(this);
     }
 
-    boolean tryAdvance(Yield<T> yield);
+    default <U> Advancer<U> then(Function<Advancer<T>,Advancer<U>> next) {
+        return next.apply(this);
+    }
 
+    boolean tryAdvance(Yield<T> yield);
 
 }
