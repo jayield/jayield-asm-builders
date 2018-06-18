@@ -1,12 +1,22 @@
-\chapter{Alternatives}
+\chapter{Background and State of the Art}
 
-In order to further understand the context of this project we will be describing some alternatives to the Java 8 Stream API as well as discussing their advantages and disadvantages.
+In order to further understand the context of this project we will be further describing the Spliterator interface, some alternatives to the Java 8 Stream API as well as discussing their advantages and disadvantages.
+
+\section{Spliterator}
+
+So what was the reasoning behind the Spliterator approach, why not just an Iterator?
+One of the reasons was to achieve parallelism in the iteration of the sequence. From a use case point of view, most of the time, we do not wish to parallelize work, most of our data isn't big enough to justify the parallelization.
+
+Another reason was the implementation of short-circuiting operations, as we have two methods in Spliterator that we can override to traverse a sequence, tryAdvance() and forEachRemaining(), tryAdvance() is the stipulated to individually traverse a sequence and therefore the one that should be used when short-circuiting a traversal.
+However, there are other ways to stop the traversing of a sequence, namely we can simply raise an exception when bulk traversing and the traversal will stop. Granted, this is somewhat of a polemic approach, but there is no hard evidence that states that it isn't a valid one, in fact, Python uses this approach, and nowadays there are lightweight Exceptions that can be used to this effect.
+
+Lastly, and from our point of view, the most valid reason, operations that combine two sequences. Operations such as Zip that require that an element from each sequence be taken to combine it into a single element, cannot be achieved by a bulk traversing function. Oddly enough Java's Stream API does not implement the Zip operation.
+
 
 \section{Guava}
 
 Guava~\citep{guava} was for some years the library most programmers defaulted to when looking for Functional programming utilities in Java, until Java 8 arrived. To achieve this functionality the Guava library provides their own sequential type, FluentIterable, which provides a way to chain operations together like Stream does.
 
-\newpage
 In listing~\ref{lst:guava} we show how the previous example, where we obtain the names of all the orange fruits, could be achieved using the Guava library and lambda functions.
 
 \lstinputlisting[caption={Guava's approach},label={lst:guava}]{./Chapters/chapter2/listings/GuavaExample.java}
@@ -19,7 +29,6 @@ Just like the Stream approach, here we can specify our intentions without traver
 
 StreamEx~\citep{streamex} is the only library, of those discussed in this document, that provides function based extensibility, instead of requiring the implementation of a specific type. For instance, looking back at our examples, to implement a filterOdd operation we would only need to define what is needed for the tryAdvance method described in listing~\ref{lst:spliterator} which iterates over two items whenever the downstream request one item. Listing~\ref{lst:streamex-example} shows an example.
 
-\newpage
 \lstinputlisting[caption={StreamEx's approach},label={lst:streamex-example}]{./Chapters/chapter2/listings/StreamExExample.java}
 
 This approach is less verbose than the one implemented by Guava and Java 8's Streams. However StreamEx's implementation still has part of the drawbacks presented by Java 8's Stream API:

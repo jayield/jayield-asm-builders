@@ -1,6 +1,22 @@
 \chapter{Solution}
 
 In this chapter we will present the Jayield solution, going through it's different components and understanding how they work and interact with each other.
+
+\section{Traverser}
+
+Traverser is an interface that is used to define ways of bulk travesing a sequence. To that end it provides the method traverse which receives a Yield function as argument to consume elements as they are traversed. Listing~\ref{lst:traverser} shows the definition of the Traverser interface.
+
+\lstinputlisting[caption={Traverser},label={lst:traverser}]{./Chapters/chapter3/listings/Traverser.java}
+
+Looking at some examples on how to use this interface, if we have an upstream sequence of Fruits, listing~\ref{lst:traverser-map-example} shows of how to transform such a sequence into a sequence of Fruit's names.
+
+\lstinputlisting[caption={Traverser map to name example},label={lst:traverser-map-example}]{./Chapters/chapter3/listings/TraverserMapExample.java}
+
+\newpage
+We can also define new sequences with the Traverser interface, lets say we want to generate a sequence of Fruits, listing~\ref{lst:traverser-generator-example} shows an example of how to do it.
+
+\lstinputlisting[caption={Traverser as sequence generator},label={lst:traverser-generator-example}]{./Chapters/chapter3/listings/TraverserAsSequenceGenerator.java}
+
 \section{Yield}
 
 Yield is the interface that represents the element generator in our solution. It's interface is equivalent to a Java Consumer, however, it has a few key differences. Listing~\ref{lst:yield} presents the definition of the Yield interface.
@@ -17,20 +33,6 @@ Lets say we were traversing a sequence of Fruit names and we would like to write
 
 \lstinputlisting[caption={Yield example},label={lst:yield-example}]{./Chapters/chapter3/listings/YieldExample.java}
 
-\section{Traverser}
-
-Traverser is an interface that is used to define ways of bulk travesing a sequence. To that end it provides the method traverse which receives a Yield function as argument to consume elements as they are traversed. Listing~\ref{lst:traverser} shows the definition of the Traverser interface.
-
-\lstinputlisting[caption={Traverser},label={lst:traverser}]{./Chapters/chapter3/listings/Traverser.java}
-
-Looking at some examples on how to use this interface, if we have an upstream sequence of Fruits, listing~\ref{lst:traverser-map-example} shows of how to transform such a sequence into a sequence of Fruit's names.
-
-\lstinputlisting[caption={Traverser map to name example},label={lst:traverser-map-example}]{./Chapters/chapter3/listings/TraverserMapExample.java}
-
-\newpage
-We can also define new sequences with the Traverser interface, lets say we want to generate a sequence of Fruits, listing~\ref{lst:traverser-generator-example} shows an example of how to do it.
-
-\lstinputlisting[caption={Traverser as sequence generator},label={lst:traverser-generator-example}]{./Chapters/chapter3/listings/TraverserAsSequenceGenerator.java}
 
 \section{Query}
 
@@ -151,7 +153,7 @@ For this Traverser, the solution described above would not work as it would not 
 
 The first approach to this issue was based on declaring the end of a state, and the beginning of the next, every time a yield.ret(...) was made. This would translate to something like what is shown in listing~\ref{lst:advancer-dup-ifs}.
 
-\lstinputlisting[caption={Duplicate Advancer translation with if State Machine},label={lst:advancer-dup-ifs}]{./Chapters/chapter3/listings/AdvancerDupIfs.java}
+\lstinputlisting[caption={Duplicate Advancer translation with if based State Machine},label={lst:advancer-dup-ifs}]{./Chapters/chapter3/listings/AdvancerDupIfs.java}
 
 As you can see there are a few key differences:
 \begin{itemize}
@@ -163,4 +165,4 @@ This solution had it's problems aswell, for instance, if a yield return was made
 
 At this moment we took a step back to re-evaluate and it was then that we started to look into Jon Skeet's C\# in Depth\citep{csharpindepth}, chapter 6. The approach described here, makes use of a switch case as well as labels, with the labels being the delimiters between the end of a state and the beginning of a new one. This approach requires some pre-processing of the Traverser code, to know how many states there will be in the switch as in Java to declare a switch we need to know in advance how many states there will be, this approach was also applied to value generating lambdas, as the same principles apply. Listing~\ref{lst:advancer-dup-switch} shows an example of the translation of the dup operation.
 
-\lstinputlisting[caption={Duplicate Advancer translation with Switch based State Machine},label={lst:advancer-dup-switch}]{./Chapters/chapter3/listings/AdvancerDupSwitch.java}
+\lstinputlisting[caption={Duplicate Advancer translation with switch based State Machine},label={lst:advancer-dup-switch}]{./Chapters/chapter3/listings/AdvancerDupSwitch.java}

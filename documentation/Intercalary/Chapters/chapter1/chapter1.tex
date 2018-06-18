@@ -1,9 +1,11 @@
 \chapter{Introduction}
-Extending java.util.stream with new query operations requires implementation of two distinct iteration protocols:
+Data structures traversal can be achieved with several approaches and currently in Java it can be done in three different ways:
 \begin{itemize}
+\item Iterating elements with an Iterator object
 \item Traversing elements individually (i.e. tryAdvance())
 \item Traversing elements in bulk (i.e. forEachRemaining())
 \end{itemize}
+In java.util.stream the implementation of new query operations requires the definition of both individually and bulk traversal algorithms.
 This incurs in undesired verbosity. In this project we propose a solution - Jayield - which infers the individual element traversal definition from a given bulk traversal method, and thus allows the implementation of new query operations with a single method (e.g. lambda expression).
 
 
@@ -18,7 +20,7 @@ Let us consider the following two classes.
 
 Listing~\ref{lst:fruit} specifies the definition of a Fruit and listing~\ref{lst:basket} makes use of said definition and specifies the fruits inside a basket. Now, lets say we want to know the names of all the fruits inside the basket that have the color orange. In Java 7 and previous versions we would do something like this:
 
-\lstinputlisting[caption={Iterator approach},label={lst:basket-iterator}]{./Chapters/chapter1/listings/withIterator.java}
+\lstinputlisting[caption={Collections approach},label={lst:basket-iterator}]{./Chapters/chapter1/listings/withIterator.java}
 
 \newpage
 As we can see in, we would attain an iterator and as we iterate over the fruits on the basket we check their color, if it matches our desired color we add it's name to the list and when we are done, we return the new list. Now lets look at how we can do this in Java 8 making use of Streams.
@@ -27,26 +29,20 @@ As we can see in, we would attain an iterator and as we iterate over the fruits 
 
 This approach lets us define our intentions, first we say we are only interested in fruits with the color orange, and that for each fruit that matches that description we are only interested in it's name. This approach lets us specify our intentions clearly which in turn makes the code easier to read and understand. 
 
-However, the end use API is not the only difference between these two approaches. The iterator approach is eager, meaning, it immediately goes through all the fruits in the basket to select the ones we are interested, taking note of the names as we go through them. The stream approach is lazy, as we said before, all we are doing is specifying our intention, no iteration is made on the sequence until it is consumed by a terminal operation, such as a forEach().
+However, the end use API is not the only difference between these two approaches. The collections approach is eager, meaning, it immediately goes through all the fruits in the basket to select the ones we are interested, taking note of the names as we go through them. The stream approach is lazy, as we said before, all we are doing is specifying our intention, no iteration is made on the sequence until it is consumed by a terminal operation, such as a forEach().
 
 \section{Traversing sequences}
 
-Going back to our initial example, the basket of fruits, we now have the names of all the orange fruits in our basket. We now find ourselves with an overwhelming amount of names, to solve this, we decide to just take every other name, reducing the number of names by half. However, the Stream API that Java 8 provides does not support this operation, so we have to implement it ourselves. To that end Java provides the Spliterator interface which we can implement or the AbstractSpliterator class that we can extend.
+Going back to our initial example, the basket of fruits, we now have the names of all the orange fruits in our basket. Suppose that we want to take the names of the fruits in our basket alternately, skipping the even items and keeping the odd items. To that end we would like to have a filterOdd() operation chained in the pipeline of filter-map of listing ~\ref{lst:basket-stream}. However, the Stream API that Java 8 provides does not support this operation, so we have to implement it ourselves.
+
+Java 8 Provides different ways of creating a new Stream. Since we want to preserve the laziness characteristic of streams we should implement the new Stream through a traversal protocol. In this case, Java 8 introduces a new iteration approach specified by the Spliterator interface which we can implement, as well as providing the AbstractSpliterator class that we can extend.
 
 In listing~\ref{lst:spliterator} we show an example of the implementation of a filterOdd operation (line~\ref{line:filterOdd}) which in turn requires an auxiliary class implementing spliterator (i.e. OddFilter, lines~\ref{line:newoddFilter} and~\ref{line:oddFilter}). In this case we extend the AbstractSpliterator instead of implementing the Spliterator interface to reduce the number of methods we're required to implement.
 
 \lstinputlisting[caption={Spliterator example},label={lst:spliterator}]{./Chapters/chapter1/listings/Example.java}
 
 
-This approach is verbose, and only benefits from bulk traversing because we have overriden forEachRemaing(), as the Spliterator documentation states, the forEachRemaining()~\citep{spliterator} method's default implementation should be overridden whenever possible as it just calls tryAdvance() until it returns false, in other words, it will traverse element by element instead of the whole sequence. 
-
-So what was the reasoning behind the Spliterator approach, why not just an Iterator?
-One of the reasons was to achieve parallelism in the iteration of the sequence. From a use case point of view, most of the time, we do not wish to parallelize work, most of our data isn't big enough to justify the parallelization.
-
-Another reason was the implementation of short-circuiting operations, as we have two methods in Spliterator that we can override to traverse a sequence, tryAdvance() and forEachRemaining(), tryAdvance() is the stipulated to individually traverse a sequence and therefore the one that should be used when short-circuiting a traversal.
-However, there are other ways to stop the traversing of a sequence, namely we can simply raise an exception when bulk traversing and the traversal will stop. Granted, this is somewhat of a polemic approach, but there is no hard evidence that states that it isn't a valid one, in fact, Python uses this approach, and nowadays there are lightweight Exceptions that can be used to this effect.
-
-Lastly, and from our point of view, the most valid reason, operations that combine two sequences. Operations such as Zip that require that an element from each sequence be taken to combine it into a single element, cannot be achieved by a bulk traversing function.
+This approach is verbose, and only benefits from bulk traversing because we have overriden forEachRemaing(), as the Spliterator documentation states, the forEachRemaining()~\citep{spliterator} method's default implementation should be overridden whenever possible as it just calls tryAdvance() until it returns false, in other words, it will traverse element by element instead of the whole sequence. We will be discussing this approach further in Chapter 2. 
 
 To overcome the shortcomings found in the Stream API we will implement a solution that allows the user to define a single way to traverse a sequence and we will generate it's counterpart. In this case the filterOdd() operation can be expressed in a lambda expression chained with the sequence of items as shown in listing~\ref{lst:jayield-filterOdd}.
 
