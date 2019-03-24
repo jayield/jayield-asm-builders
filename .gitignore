@@ -16,6 +16,9 @@
 .idea/**/dynamic.xml
 .idea/**/uiDesigner.xml
 
+**/logs/*
+**/out/*
+
 # Gradle:
 .idea/**/gradle.xml
 .idea/**/libraries
