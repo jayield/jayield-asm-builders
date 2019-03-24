@@ -17,8 +17,7 @@ import static jayield.advancer.TestUtils.makeAssertions;
 
 
 
-@Ignore
-public class StreamFunctionsTests {
+public class ThenFunctionTests {
 
     @Test
     public void testFilter() {

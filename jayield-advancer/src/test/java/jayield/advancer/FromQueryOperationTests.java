@@ -47,6 +47,7 @@ public class FromQueryOperationTests {
         assertTrue(advancer.tryAdvance(yielded::add));
     }
 
+    @Ignore
     @Test
     public void testMap() {
         Query<Integer> query = Query.of("1", "22", "333")

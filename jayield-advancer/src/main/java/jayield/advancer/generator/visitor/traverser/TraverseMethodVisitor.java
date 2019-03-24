@@ -84,7 +84,7 @@ public abstract class TraverseMethodVisitor extends ChangeOwnersMethodVisitor im
         super.visitJumpInsn(IFEQ, loopEnd);
         super.visitLabel(advance);
         super.visitVarInsn(ALOAD, getThisVar());
-        super.visitVarInsn(ALOAD, 2);
+        super.visitVarInsn(ALOAD, getAuxIndex());
         super.visitMethodInsn(INVOKESPECIAL, newOwner, ADVANCE, ADVANCE_METHOD_DESC, false);
         super.visitJumpInsn(GOTO, loopStart);
         super.visitLabel(loopEnd);
