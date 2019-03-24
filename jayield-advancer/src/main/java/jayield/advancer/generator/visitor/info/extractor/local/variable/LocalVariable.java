@@ -4,6 +4,9 @@ import org.objectweb.asm.Label;
 
 public class LocalVariable {
 
+    private static final String THIS_KEYWORD_NAME = "this";
+    public static final String THIS_SYNTHETHIC_REPLACEMENT = "$source";
+
     private final String name;
     private final String desc;
     private final String signature;
@@ -12,7 +15,11 @@ public class LocalVariable {
     private final int index;
 
     public LocalVariable(String name, String desc, String signature, Label start, Label end, int index) {
-        this.name = name;
+        if(THIS_KEYWORD_NAME.equals(name)) {
+            this.name = THIS_SYNTHETHIC_REPLACEMENT;
+        } else {
+            this.name = name;
+        }
         this.desc = desc;
         this.signature = signature;
         this.start = start;
@@ -42,5 +49,17 @@ public class LocalVariable {
 
     public int getIndex() {
         return index;
+    }
+
+    @Override
+    public String toString() {
+        return "LocalVariable{" +
+                "name='" + name + '\'' +
+                ", desc='" + desc + '\'' +
+                ", signature='" + signature + '\'' +
+                ", start=" + start +
+                ", end=" + end +
+                ", index=" + index +
+                '}';
     }
 }

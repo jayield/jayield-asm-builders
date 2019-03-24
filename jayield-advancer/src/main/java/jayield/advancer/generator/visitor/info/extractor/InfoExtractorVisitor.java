@@ -13,6 +13,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static java.lang.String.format;
+import static org.objectweb.asm.ClassReader.SKIP_CODE;
+import static org.objectweb.asm.ClassReader.SKIP_DEBUG;
 import static org.objectweb.asm.ClassReader.SKIP_FRAMES;
 import static org.objectweb.asm.ClassWriter.COMPUTE_FRAMES;
 import static org.objectweb.asm.ClassWriter.COMPUTE_MAXS;
@@ -42,7 +44,7 @@ public class InfoExtractorVisitor extends ClassVisitor implements Opcodes {
     public static Map<String, Info> extractInfo(SerializedLambda traversable) {
         try {
             ClassReader reader = new ClassReader(traversable.getImplClass());
-            ClassWriter writer = new ClassWriter(COMPUTE_MAXS | COMPUTE_FRAMES);
+            ClassWriter writer = new ClassWriter(COMPUTE_FRAMES);
             InfoExtractorVisitor visitor = new InfoExtractorVisitor(writer, traversable.getCapturingClass());
             reader.accept(visitor, SKIP_FRAMES);
 

@@ -1,18 +1,22 @@
 package jayield.advancer.generator;
 
-import jayield.advancer.Advancer;
-import org.jayield.Yield;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.util.ASMifier;
-
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static jayield.advancer.generator.Constants.YIELD_METHOD_DESCRIPTION;
 import static jayield.advancer.generator.Constants.YIELD_METHOD_NAME;
+
+import java.lang.invoke.SerializedLambda;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.jayield.Yield;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
+import org.objectweb.asm.util.ASMifier;
+
+import jayield.advancer.Advancer;
+import jayield.advancer.generator.visitor.info.extractor.Info;
 
 public class InstrumentationUtils implements Opcodes {
 
@@ -154,8 +158,9 @@ public class InstrumentationUtils implements Opcodes {
         int aux = 0;
         int until = desc.lastIndexOf(METHOD_PARAMETERS_END);
         while ((aux = desc.indexOf(OBJECT, aux + 1)) != -1 && aux < until) {
-            if (desc.charAt(aux - 1) == PATH_DELIMITER)
+            if (desc.charAt(aux - 1) == PATH_DELIMITER) {
                 return lastType;
+            }
             lastType = aux;
         }
         return lastType;
@@ -170,7 +175,9 @@ public class InstrumentationUtils implements Opcodes {
     }
 
     public static void printASM(String filename) throws Exception {
+        System.out.println("\n#### ASM START ###\n\n");
         ASMifier.main(new String[]{DEBUG_FLAG, filename});
+        System.out.println("\n\n#### ASM END ###\n");
     }
 
     public static String getOutputPath() {
@@ -192,6 +199,36 @@ public class InstrumentationUtils implements Opcodes {
                 name.equals(YIELD_METHOD_NAME) &&
                 desc.equals(YIELD_METHOD_DESCRIPTION) &&
                 isInterface;
+    }
+
+    public static String getClassName(SerializedLambda lambda) {
+        return format("jayield/advancer/%s__%s", getCaller(), lambda.getImplMethodName().replace('$', '_'));
+    }
+
+    public static int getYieldIndex(SerializedLambda lambda, Info info) {
+        int parameterCount = Type.getArgumentTypes(info.getDescriptor()).length;
+        int capturedArgumentCount = lambda.getCapturedArgCount();
+        if(capturedArgumentCount == parameterCount) {
+            return capturedArgumentCount;
+        } else {
+            return parameterCount - 1;
+        }
+    }
+
+    public static String getCaller() {
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+        for (int i = 0; i < stackTrace.length; i++) {
+            StackTraceElement stackTraceElement = stackTrace[i];
+            if (stackTraceElement.getClassName().equals(Advancer.class.getName()) &&
+                    stackTraceElement.getMethodName().equals("from")) {
+                while (stackTraceElement.getClassName().equals(Advancer.class.getName())) {
+                    stackTraceElement = stackTrace[++i];
+                }
+                return stackTraceElement.getMethodName();
+            }
+        }
+
+        return "not_found";
     }
 
 

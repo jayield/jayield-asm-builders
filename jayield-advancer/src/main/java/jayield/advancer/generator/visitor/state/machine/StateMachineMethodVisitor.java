@@ -80,8 +80,6 @@ public class StateMachineMethodVisitor extends TraverseMethodVisitor implements 
     public void visitCode() {
         super.visitCode();
         debugState();
-        startLabel = new Label();
-        endLabel = new Label();
         super.visitFrame(F_SAME, 0, null, 1, null);
         if (isTryAdvance) {
             setUpElementFoundBox();
@@ -117,9 +115,11 @@ public class StateMachineMethodVisitor extends TraverseMethodVisitor implements 
             super.visitFieldInsn(GETFIELD, newOwner, stateField, INT_ARRAY_DESCRIPTOR);
             super.visitInsn(ICONST_0);
             super.visitInsn(IALOAD);
+            endLabel = new Label();
             super.visitLookupSwitchInsn(endLabel, cases, labels);
             startLabel = labels[state++];
             super.visitLabel(startLabel);
+
         }
     }
 
@@ -163,7 +163,7 @@ public class StateMachineMethodVisitor extends TraverseMethodVisitor implements 
 
     @Override
     public void visitLocalVariable(String name, String desc, String signature, Label start, Label end, int index) {
-        super.visitLocalVariable(name, desc, signature, startLabel, endLabel, getActualVar(index));
+        super.visitLocalVariable(name, desc, signature, start, end, getActualVar(index));
     }
 
     @Override
@@ -177,17 +177,9 @@ public class StateMachineMethodVisitor extends TraverseMethodVisitor implements 
     @Override
     public void visitInsn(int opcode) {
         if (opcode == RETURN) {
-//            super.visitLabel(endLabel);
             finishState();
-            super.visitLocalVariable(THIS, getTypeDescriptor(newOwner), null, startLabel, endLabel, getThisVar());
         }
         super.visitInsn(opcode);
-    }
-
-    @Override
-    public void visitMaxs(int maxStack, int maxLocals) {
-        mv.visitLocalVariable(WRAPPER, YIELD_DESCRIPTOR, null, startLabel, endLabel, getWrapperIndex());
-        super.visitMaxs(maxStack, maxLocals);
     }
 
     private void finishState() {
@@ -199,14 +191,14 @@ public class StateMachineMethodVisitor extends TraverseMethodVisitor implements 
             super.visitLdcInsn(state);
             super.visitInsn(IASTORE);
         }
-        if(labels != null && (state + 1) == labels.length) {
-            super.visitLabel(endLabel);
-        }
         super.visitInsn(RETURN);
         if (isACase) {
             if (state < labels.length) {
                 super.visitLabel(labels[state++]);
             }
+        }
+        if(labels != null && state == labels.length) {
+            super.visitLabel(endLabel);
         }
     }
 

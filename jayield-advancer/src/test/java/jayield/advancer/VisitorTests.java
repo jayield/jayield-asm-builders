@@ -5,6 +5,7 @@ import jayield.advancer.generator.Generator;
 import jayield.advancer.generator.classloader.ByteArrayClassLoader;
 import jayield.advancer.generator.visitor.ownership.ChangeOwnersMethodVisitor;
 import org.jayield.Query;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -27,7 +28,7 @@ public class VisitorTests {
         String originalName = DummyClass.class.getName();
         String finalName = originalName + "Generated";
         ClassReader reader = new ClassReader(originalName);
-        ClassWriter writer = new ClassWriter(COMPUTE_MAXS | COMPUTE_FRAMES);
+        ClassWriter writer = new ClassWriter(COMPUTE_FRAMES);
         ClassVisitor visitor = new ClassVisitor(ASM6, writer) {
             @Override
             public void visit(int version,

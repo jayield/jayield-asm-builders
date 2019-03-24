@@ -1,16 +1,5 @@
 package jayield.advancer.generator.visitor.constructor;
 
-import jayield.advancer.Advancer;
-import jayield.advancer.generator.visitor.info.extractor.local.variable.LocalVariable;
-import jayield.advancer.generator.wrapper.AbstractAdvance;
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
-
-import java.util.Iterator;
-import java.util.List;
-
 import static java.lang.String.format;
 import static jayield.advancer.generator.Constants.CONSTRUCTOR_METHOD_NAME;
 import static jayield.advancer.generator.Constants.INT_ARRAY_DESCRIPTOR;
@@ -21,21 +10,74 @@ import static jayield.advancer.generator.Constants.ITERATOR_FROM_TRAVERSER;
 import static jayield.advancer.generator.Constants.QUERY_DESCRIPTOR;
 import static jayield.advancer.generator.Constants.STATE_FIELD_NAME;
 import static jayield.advancer.generator.Constants.TRAVERSER_DESCRIPTOR;
-import static jayield.advancer.generator.InstrumentationUtils.METHOD_PARAMETERS_END;
-import static jayield.advancer.generator.InstrumentationUtils.OBJECT;
 import static jayield.advancer.generator.InstrumentationUtils.VOID;
 import static jayield.advancer.generator.InstrumentationUtils.getClassPath;
 import static jayield.advancer.generator.InstrumentationUtils.getLoadCode;
 import static jayield.advancer.generator.InstrumentationUtils.getMethodDescriptor;
 
+import java.lang.invoke.SerializedLambda;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+
+import jayield.advancer.Advancer;
+import jayield.advancer.generator.visitor.info.extractor.local.variable.LocalVariable;
+import jayield.advancer.generator.wrapper.AbstractAdvance;
+
 public class ConstructorVisitor implements Opcodes {
 
     public static MethodVisitor generateConstructor(ClassVisitor visitor,
-                                                    Iterable<LocalVariable> localVariables,
-                                                    String desc,
+                                                    Map<Integer, LocalVariable> localVariables,
                                                     String owner,
-                                                    List<String> ramifications,
-                                                    Type[] argumentTypes) {
+                                                    SerializedLambda traverser,
+                                                    int yieldIndex,
+                                                    List<String> ramifications) {
+        if (yieldIndex > 0) {
+            writeEmptyConstructor(visitor, owner);
+        }
+        return writeCapturedArgumentConstructor(visitor,
+                                                localVariables,
+                                                owner,
+                                                ramifications,
+                                                traverser,
+                                                yieldIndex);
+    }
+
+    private static MethodVisitor writeCapturedArgumentConstructor(ClassVisitor visitor,
+                                                                  Map<Integer, LocalVariable> localVariables,
+                                                                  String owner,
+                                                                  List<String> ramifications,
+                                                                  SerializedLambda traverser,
+                                                                  int yieldIndex) {
+        MethodVisitor constructor = visitor.visitMethod(ACC_PUBLIC,
+                                                        CONSTRUCTOR_METHOD_NAME + owner,
+                                                        getConstructorSignature(traverser, localVariables.values()),
+                                                        null,
+                                                        null);
+        callSuper(constructor);
+        initializeFields(constructor, localVariables.values(), owner, yieldIndex);
+        initializeState(constructor, owner, ramifications);
+        constructor.visitInsn(RETURN);
+        constructor.visitMaxs(0, 0);
+        return constructor;
+    }
+
+    private static String getConstructorSignature(SerializedLambda traverser,
+                                                  Collection<LocalVariable> values) {
+        String signatureWithoutYield = traverser.getImplMethodSignature()
+                                                .replace("Lorg/jayield/Yield;)V", ")V");
+        if (values.stream().anyMatch(lv -> LocalVariable.THIS_SYNTHETHIC_REPLACEMENT.equals(lv.getName()))) {
+            return signatureWithoutYield.replace("(", "(Lorg/jayield/Query;");
+        }
+        return signatureWithoutYield;
+    }
+
+    private static MethodVisitor writeEmptyConstructor(ClassVisitor visitor, String owner) {
         MethodVisitor emptyConstructor = visitor.visitMethod(ACC_PUBLIC,
                                                              CONSTRUCTOR_METHOD_NAME + owner,
                                                              getMethodDescriptor(VOID),
@@ -43,21 +85,7 @@ public class ConstructorVisitor implements Opcodes {
                                                              null);
         callSuper(emptyConstructor);
         emptyConstructor.visitInsn(RETURN);
-        emptyConstructor.visitMaxs(1, 1);
-
-        if (Type.getArgumentTypes(desc).length > 1) {
-            MethodVisitor constructor = visitor.visitMethod(ACC_PUBLIC,
-                                                            CONSTRUCTOR_METHOD_NAME + owner,
-                                                            extractConstructorParameters(desc),
-                                                            null,
-                                                            null);
-            callSuper(constructor);
-            initializeFields(constructor, localVariables, owner, argumentTypes.length - 1);
-            initializeState(constructor, owner, ramifications);
-            constructor.visitInsn(RETURN);
-            constructor.visitMaxs(2, 3);
-            return constructor;
-        }
+        emptyConstructor.visitMaxs(0, 0);
         return emptyConstructor;
     }
 
@@ -70,14 +98,13 @@ public class ConstructorVisitor implements Opcodes {
                            false);
     }
 
-    private static String extractConstructorParameters(String desc) {
-        return format("%s%c%c", desc.substring(0, desc.lastIndexOf(OBJECT)), METHOD_PARAMETERS_END, VOID);
-    }
-
     private static void initializeFields(MethodVisitor mv,
                                          Iterable<LocalVariable> localVariables,
                                          String owner,
                                          int yieldIndex) {
+        System.out.println("\n\n#### CONSTRUCTOR LOCAL VARIABLES START ####\n");
+        localVariables.forEach(System.out::println);
+        System.out.println("\n\n#### CONSTRUCTOR LOCAL VARIABLES END ####\n");
         Iterator<LocalVariable> iterator = localVariables.iterator();
         int parameterIndex = 1;
         LocalVariable var;

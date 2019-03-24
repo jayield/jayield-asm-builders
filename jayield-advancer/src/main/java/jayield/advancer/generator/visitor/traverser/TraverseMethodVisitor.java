@@ -1,18 +1,8 @@
 package jayield.advancer.generator.visitor.traverser;
 
-import jayield.advancer.generator.visitor.info.extractor.local.variable.LocalVariable;
-import jayield.advancer.generator.visitor.ownership.ChangeOwnersMethodVisitor;
-import org.objectweb.asm.Handle;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
-
-import java.util.Map;
-
 import static java.lang.String.valueOf;
 import static jayield.advancer.generator.Constants.ADVANCE;
 import static jayield.advancer.generator.Constants.ADVANCE_METHOD_DESC;
-import static jayield.advancer.generator.Constants.AUX;
 import static jayield.advancer.generator.Constants.BOOLEAN_SUPPLIER;
 import static jayield.advancer.generator.Constants.BOOL_BOX;
 import static jayield.advancer.generator.Constants.BOOL_BOX_DESCRIPTOR;
@@ -26,12 +16,21 @@ import static jayield.advancer.generator.Constants.ITERATOR_DESCRIPTOR;
 import static jayield.advancer.generator.Constants.TRAVERSE_METHOD_NAME;
 import static jayield.advancer.generator.Constants.VALID_VALUE;
 import static jayield.advancer.generator.Constants.YIELD;
-import static jayield.advancer.generator.Constants.YIELD_DESCRIPTOR;
 import static jayield.advancer.generator.Constants.YIELD_METHOD_NAME;
 import static jayield.advancer.generator.InstrumentationUtils.BOOLEAN;
 import static jayield.advancer.generator.InstrumentationUtils.METHOD_PARAMETERS_END;
 import static jayield.advancer.generator.InstrumentationUtils.getTypeDescriptor;
 import static jayield.advancer.generator.InstrumentationUtils.insertTypeInDescriptor;
+
+import java.util.Map;
+
+import org.objectweb.asm.Handle;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+
+import jayield.advancer.generator.visitor.info.extractor.local.variable.LocalVariable;
+import jayield.advancer.generator.visitor.ownership.ChangeOwnersMethodVisitor;
 
 public abstract class TraverseMethodVisitor extends ChangeOwnersMethodVisitor implements Opcodes {
 
@@ -52,7 +51,7 @@ public abstract class TraverseMethodVisitor extends ChangeOwnersMethodVisitor im
 
     @Override
     public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
-        if (name.equals(TRAVERSE_METHOD_NAME)) {
+        if (TRAVERSE_METHOD_NAME.equals(name)) {
             traverseToIterator();
         } else {
             super.visitMethodInsn(opcode, owner, name, desc, itf);
@@ -85,7 +84,7 @@ public abstract class TraverseMethodVisitor extends ChangeOwnersMethodVisitor im
         super.visitJumpInsn(IFEQ, loopEnd);
         super.visitLabel(advance);
         super.visitVarInsn(ALOAD, getThisVar());
-        super.visitVarInsn(ALOAD, getAuxIndex());
+        super.visitVarInsn(ALOAD, 2);
         super.visitMethodInsn(INVOKESPECIAL, newOwner, ADVANCE, ADVANCE_METHOD_DESC, false);
         super.visitJumpInsn(GOTO, loopStart);
         super.visitLabel(loopEnd);
@@ -149,11 +148,6 @@ public abstract class TraverseMethodVisitor extends ChangeOwnersMethodVisitor im
         return -1;
     }
 
-    @Override
-    public void visitMaxs(int maxStack, int maxLocals) {
-        super.visitLocalVariable(AUX, YIELD_DESCRIPTOR, null, startLabel, endLabel, getAuxIndex());
-        super.visitMaxs(maxStack, maxLocals);
-    }
 
     protected int getWrapperIndex() {
         return localVariables.values().size() + 1;

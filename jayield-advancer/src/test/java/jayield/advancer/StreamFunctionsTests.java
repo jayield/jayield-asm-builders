@@ -16,6 +16,8 @@ import java.util.function.Function;
 import static jayield.advancer.TestUtils.makeAssertions;
 
 
+
+@Ignore
 public class StreamFunctionsTests {
 
     @Test

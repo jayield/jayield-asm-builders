@@ -1,13 +1,17 @@
 package jayield.advancer.generator;
 
+import org.jayield.Query;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
+import java.lang.invoke.MethodHandleInfo;
 import java.lang.invoke.SerializedLambda;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
 
 import static java.lang.String.format;
 import static jayield.advancer.generator.Constants.CONSTRUCTOR_METHOD_NAME;
@@ -16,6 +20,7 @@ import static jayield.advancer.generator.Constants.GET_CAPTURED_ARG_METHOD_SIGNA
 import static jayield.advancer.generator.Constants.INITIALIZE;
 import static jayield.advancer.generator.Constants.INITIALIZE_METHOD_DESCRIPTOR;
 import static jayield.advancer.generator.Constants.PRIMITIVE_TYPE_MAPPER;
+import static jayield.advancer.generator.Constants.QUERY_DESCRIPTOR;
 import static jayield.advancer.generator.Constants.SERIALIZED_LAMBDA;
 import static jayield.advancer.generator.InstrumentationUtils.ARRAY;
 import static jayield.advancer.generator.InstrumentationUtils.METHOD_PARAMETERS_END;
@@ -89,9 +94,14 @@ public class InitializeMethodGenerator implements Opcodes {
     @SuppressWarnings("unchecked")
     private Consumer<MethodVisitor>[] getCapturedArgumentTypeCasters() {
         Consumer<MethodVisitor>[] result = new Consumer[lambda.getCapturedArgCount()];
-        String[] signatureTokens = Stream.of(Type.getArgumentTypes(lambda.getImplMethodSignature()))
-                                         .map(Type::getDescriptor)
-                                         .toArray(String[]::new);
+        List<Type> argumentTypes = new ArrayList<Type>();
+        argumentTypes.addAll(Arrays.asList(Type.getArgumentTypes(lambda.getImplMethodSignature())));
+        if (isQueryInstanceMethod()) {
+            argumentTypes.add(0, Type.getType(QUERY_DESCRIPTOR));
+        }
+        String[] signatureTokens = argumentTypes.stream()
+                                                .map(Type::getDescriptor)
+                                                .toArray(String[]::new);
         for (int i = 0; i < lambda.getCapturedArgCount(); i++) {
             if (signatureTokens[i].length() > 1) {
                 result[i] = typeCast(signatureTokens[i]);
@@ -104,8 +114,16 @@ public class InitializeMethodGenerator implements Opcodes {
 
     private String getSignatureFromLambda() {
         String signature = lambda.getImplMethodSignature();
+        if (isQueryInstanceMethod()) {
+            signature = signature.replace("(", "(" + QUERY_DESCRIPTOR);
+        }
         String parameters = signature.substring(0, signature.lastIndexOf(OBJECT));
         return format("%s%c%c", parameters, METHOD_PARAMETERS_END, VOID);
+    }
+
+    private boolean isQueryInstanceMethod() {
+        return lambda.getImplMethodKind() == MethodHandleInfo.REF_invokeSpecial &&
+                lambda.getCapturedArgCount() > 0 && lambda.getCapturedArg(0) instanceof Query;
     }
 
     private Consumer<MethodVisitor> typeCast(String token) {
@@ -113,10 +131,10 @@ public class InitializeMethodGenerator implements Opcodes {
     }
 
     private String getTreatedToken(String token) {
-        if(token.charAt(0) == ARRAY) {
+        if (token.charAt(0) == ARRAY) {
             return token;
         }
         return token.replace(String.valueOf(OBJECT), "")
-                              .replace(String.valueOf(OBJECT_DELIMITER), "");
+                    .replace(String.valueOf(OBJECT_DELIMITER), "");
     }
 }

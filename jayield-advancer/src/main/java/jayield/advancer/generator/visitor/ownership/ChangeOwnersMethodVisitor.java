@@ -1,6 +1,7 @@
 package jayield.advancer.generator.visitor.ownership;
 
 import org.objectweb.asm.Handle;
+import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
@@ -19,6 +20,12 @@ public class ChangeOwnersMethodVisitor extends MethodVisitor implements Opcodes 
         super(ASM6, mv);
         this.originalOwner = originalOwner;
         this.newOwner = newOwner;
+    }
+
+    @Override
+    public void visitLabel(Label label){
+//        System.out.println("visiting " + label);
+        super.visitLabel(label);
     }
 
     @Override

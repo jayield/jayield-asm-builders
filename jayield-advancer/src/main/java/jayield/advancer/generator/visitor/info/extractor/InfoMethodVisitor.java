@@ -15,21 +15,20 @@ public class InfoMethodVisitor extends MethodVisitor implements Opcodes {
 
     private final LocalVariableVisitor localVariableVisitor;
     private final RamificationsVisitor ramificationsMethodVisitor;
-    private final List<String> ramifications;
-    private final Info info;
     private final YieldCountVisitor yieldCountVisitor;
 
     InfoMethodVisitor(MethodVisitor mv, String owner, Info info) {
         super(ASM6, mv);
-        this.info = info;
-        ramifications = new ArrayList<>();
+        List<String> ramifications = new ArrayList<>();
         localVariableVisitor = new LocalVariableVisitor(mv);
         ramificationsMethodVisitor = new RamificationsVisitor(mv, ramifications::add, owner);
-        yieldCountVisitor = new YieldCountVisitor(mv, this.info::setStates);
+        yieldCountVisitor = new YieldCountVisitor(mv, info::setStates);
 
-        this.info.setLocalVariables(localVariableVisitor.getLocalVariables());
-        this.info.setRamifications(ramifications);
+        info.setLocalVariables(localVariableVisitor.getLocalVariables());
+        info.setRamifications(ramifications);
     }
+
+
 
     @Override
     public void visitLocalVariable(String name, String desc, String signature, Label start, Label end, int index) {

@@ -17,9 +17,10 @@ import java.lang.reflect.Method;
 
 import static java.lang.String.format;
 import static jayield.advancer.generator.InstrumentationUtils.debugASM;
+import static jayield.advancer.generator.InstrumentationUtils.getCaller;
+import static jayield.advancer.generator.InstrumentationUtils.getClassName;
 import static jayield.advancer.generator.InstrumentationUtils.getOutputPath;
 import static org.objectweb.asm.ClassWriter.COMPUTE_FRAMES;
-import static org.objectweb.asm.ClassWriter.COMPUTE_MAXS;
 
 public class Generator {
 
@@ -27,58 +28,81 @@ public class Generator {
 
     public static <R> Advancer<R> generateAdvancer(Traverser<R> source) {
         try {
-            SerializedLambda lambda = getSerializedLambdaFromTraversable(source);
+            SerializedLambda lambda = getSerializedLambda(source);
             byte[] bytecode = generateAdvancerClassByteCode(lambda);
-            debug(false, lambda, bytecode);
-            return getAdvancer(loadGeneratedClass(lambda, bytecode), lambda);
+            debug(true, lambda, bytecode);
+            Class<?> klass = loadGeneratedClass(lambda, bytecode);
+            return getAdvancer(klass, lambda);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static SerializedLambda getSerializedLambdaFromTraversable(Serializable lambda) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    public static SerializedLambda getSerializedLambda(Serializable lambda) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         Method method = lambda.getClass().getDeclaredMethod(WRITE_REPLACE_METHOD_NAME);
         method.setAccessible(true);
         return (SerializedLambda) method.invoke(lambda);
     }
 
-    private static byte[] generateAdvancerClassByteCode(SerializedLambda lambda) throws IOException {
+    public static byte[] generateAdvancerClassByteCode(SerializedLambda lambda) throws IOException {
         ClassReader traversableClassReader = new ClassReader(lambda.getImplClass());
-        ClassWriter advancerClassWriter = new ClassWriter(COMPUTE_MAXS | COMPUTE_FRAMES);
+        ClassWriter advancerClassWriter = new ClassWriter(COMPUTE_FRAMES);
         TraverserVisitor visitor = new TraverserVisitor(advancerClassWriter, lambda);
 
         traversableClassReader.accept(visitor, 0);
         return advancerClassWriter.toByteArray();
     }
 
-    private static void debug(boolean enabled, SerializedLambda lambda, byte[] bytecode) throws Exception {
+    public static void debug(boolean enabled, SerializedLambda lambda, byte[] bytecode) throws Exception {
+        if(enabled) {
+            printLambdaInfo(lambda);
+        }
         String filename = getGeneratedFilename(lambda, getOutputPath());
         writeClassToFile(filename, bytecode);
         debugASM(enabled, filename);
     }
 
+    private static void printLambdaInfo(SerializedLambda lambda) {
+        System.out.println(format(" Lambda: %s",lambda));
+        System.out.println(format("     Captured Arguments: %d", lambda.getCapturedArgCount()));
+        for (int i = 0; i < lambda.getCapturedArgCount(); i++) {
+            System.out.println(format("         Captured Argument at index (%d): %s", i, lambda.getCapturedArg(i)));
+            Class<?> klass = lambda.getCapturedArg(i).getClass();
+            System.out.println(format("             Class: %s", klass.getName()));
+            Class<?>[] interfaces = klass.getInterfaces();
+            if(interfaces.length > 0){
+            System.out.println("             Interfaces:");
+                for (int j = 0; j < interfaces.length; j++) {
+                    System.out.println(format("                 %s", interfaces[j].getName()));
+                }
+
+            }
+            System.out.println();
+        }
+        System.out.println(format("     Signature: %s", lambda.getImplMethodSignature()));
+        System.out.println("\n#\n#\n#\nPRINT END\n");
+    }
+
     @SuppressWarnings("unchecked")
-    private static <R> Advancer<R> getAdvancer(Class<?> generatedClass,
+    public static <R> Advancer<R> getAdvancer(Class<?> generatedClass,
                                                SerializedLambda lambda) throws IllegalAccessException, InstantiationException {
         Initializable<R> initializable = (Initializable<R>) generatedClass.newInstance();
         return initializable.initialize(lambda);
     }
 
-    private static Class<?> loadGeneratedClass(SerializedLambda lambda, byte[] bytecode) {
-        return ByteArrayClassLoader.load(lambda.getImplMethodName(), bytecode);
+    public static Class<?> loadGeneratedClass(SerializedLambda lambda, byte[] bytecode) {
+        return ByteArrayClassLoader.load(getClassName(lambda).replace('/','.'), bytecode);
     }
 
-    private static String getGeneratedFilename(SerializedLambda lambda, String outPath) {
+    public static String getGeneratedFilename(SerializedLambda lambda, String outPath) {
         if (outPath.endsWith("/")) {
-            return format("%s%s___%s.class",
+            return format("%s%s.class",
                           outPath,
-                          removeInvalidChars(getCaller()),
-                          removeInvalidChars(lambda.getImplMethodName()));
+                          removeInvalidChars(getClassName(lambda)));
         }
-        return format("%s./%s___%s.class",
+        return format("%s./%s.class",
                       outPath,
-                      removeInvalidChars(getCaller()),
-                      removeInvalidChars(lambda.getImplMethodName()));
+                      removeInvalidChars(getClassName(lambda)));
     }
 
     public static void writeClassToFile(String filename, byte[] targetBytes) {
@@ -97,22 +121,5 @@ public class Generator {
                 .replace("<", "")
                 .replace("*", "")
                 .replace(">", "");
-    }
-
-    private static String getCaller() {
-        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-        for (int i = 0; i < stackTrace.length; i++) {
-            StackTraceElement stackTraceElement = stackTrace[i];
-            if (stackTraceElement.getClassName().equals(Advancer.class.getName()) &&
-                    stackTraceElement.getMethodName().equals("from")) {
-                while (stackTraceElement.getClassName().equals(Advancer.class.getName()) &&
-                        i < stackTrace.length) {
-                    stackTraceElement = stackTrace[++i];
-                }
-                return stackTraceElement.getMethodName();
-            }
-        }
-
-        return "not_found";
     }
 }
